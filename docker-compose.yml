@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  xview:
+    image: xview:latest
+    container_name: xview
+    ports:
+      - "3000:3000"
+    volumes:
+      - /volume1/xview/media:/media:ro
+      - /volume1/docker/xview/config:/config
+      - /volume1/docker/xview/metadata:/metadata
+    environment:
+      - TZ=America/Denver
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+    restart: unless-stopped
