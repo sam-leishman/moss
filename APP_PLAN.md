@@ -109,11 +109,11 @@ The application supports detailed credit attribution for media items:
 - [x] Error handling framework and logging
 
 ### Phase 2: Library Management
-- [ ] Library creation/deletion UI with validation
-- [ ] Folder selection interface (restricted to /media mount)
-- [ ] Library switching
-- [ ] Media scanning per library with error recovery
-- [ ] Orphaned media cleanup (files deleted from disk)
+- [x] Library creation/deletion UI with validation
+- [x] Folder selection interface (restricted to /media mount)
+- [x] Library switching
+- [x] Media scanning per library with error recovery
+- [x] Orphaned media cleanup (files deleted from disk)
 
 ### Phase 3: Media Browsing
 - [ ] Media grid/list views with lazy loading

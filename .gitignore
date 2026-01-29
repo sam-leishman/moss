@@ -27,3 +27,5 @@ vite.config.ts.timestamp-*
 !/test-config/.gitkeep
 /test-media/*
 !/test-media/.gitkeep
+/test-metadata/*
+!/test-metadata/.gitkeep

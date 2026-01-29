@@ -19,3 +19,14 @@ export type {
 	ScanOptions,
 	ScanResult
 } from './file-scanner';
+
+export {
+	LibraryScanner,
+	scanLibrary,
+	cleanupOrphanedMediaForLibrary
+} from './library-scanner';
+
+export type {
+	ScanProgress,
+	ScanStats
+} from './library-scanner';
