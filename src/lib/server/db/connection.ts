@@ -41,3 +41,13 @@ export function getDatabasePath(): string {
 	const configDir = process.env.CONFIG_DIR || join(process.cwd(), 'test-config');
 	return join(configDir, 'xview.db');
 }
+
+process.on('SIGINT', () => {
+	closeDatabase();
+	process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+	closeDatabase();
+	process.exit(0);
+});

@@ -104,9 +104,9 @@ The application supports detailed credit attribution for media items:
 - [x] Implement SQLite database with schema and indexes
 - [x] Database migration system with version tracking
 - [x] Create Docker build configuration with all volumes
-- [ ] Path validation and security middleware
-- [ ] Basic file system scanning with media type detection
-- [ ] Error handling framework and logging
+- [x] Path validation and security middleware
+- [x] Basic file system scanning with media type detection
+- [x] Error handling framework and logging
 
 ### Phase 2: Library Management
 - [ ] Library creation/deletion UI with validation

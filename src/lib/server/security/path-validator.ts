@@ -1,0 +1,142 @@
+import { realpathSync, existsSync, statSync } from 'fs';
+import { resolve, normalize, isAbsolute, sep } from 'path';
+
+export class PathValidationError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'PathValidationError';
+	}
+}
+
+export interface PathValidationOptions {
+	allowedRoot: string;
+	mustExist?: boolean;
+	allowSymlinks?: boolean;
+}
+
+export class PathValidator {
+	private allowedRoot: string;
+
+	constructor(allowedRoot: string) {
+		if (!allowedRoot) {
+			throw new Error('allowedRoot must be provided');
+		}
+
+		if (!isAbsolute(allowedRoot)) {
+			throw new Error('allowedRoot must be an absolute path');
+		}
+
+		try {
+			this.allowedRoot = realpathSync(allowedRoot);
+		} catch (error) {
+			throw new Error(`allowedRoot does not exist or is not accessible: ${allowedRoot}`);
+		}
+	}
+
+	validatePath(inputPath: string, options: Partial<PathValidationOptions> = {}): string {
+		const { mustExist = true, allowSymlinks = false } = options;
+
+		if (!inputPath) {
+			throw new PathValidationError('Path cannot be empty');
+		}
+
+		if (inputPath.includes('\0')) {
+			throw new PathValidationError('Path contains null bytes');
+		}
+
+		let normalizedPath = normalize(inputPath);
+
+		if (!isAbsolute(normalizedPath)) {
+			normalizedPath = resolve(this.allowedRoot, normalizedPath);
+		}
+
+		if (mustExist && !existsSync(normalizedPath)) {
+			throw new PathValidationError('Path does not exist');
+		}
+
+		let resolvedPath: string;
+		try {
+			if (mustExist) {
+				resolvedPath = realpathSync(normalizedPath);
+			} else {
+				const parts = normalizedPath.split(sep);
+				let current = parts[0] || sep;
+				const resolvedParts: string[] = [];
+
+				for (const part of parts) {
+					if (!part) continue;
+					
+					const testPath = resolve(current, part);
+					if (existsSync(testPath)) {
+						current = realpathSync(testPath);
+					} else {
+						current = testPath;
+					}
+					resolvedParts.push(current);
+				}
+				
+				resolvedPath = resolvedParts[resolvedParts.length - 1] || normalizedPath;
+			}
+		} catch (error) {
+			throw new PathValidationError(`Failed to resolve path: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+
+		if (!resolvedPath.startsWith(this.allowedRoot + sep) && resolvedPath !== this.allowedRoot) {
+			throw new PathValidationError('Path is outside allowed root directory');
+		}
+
+		if (!allowSymlinks && mustExist) {
+			const stats = statSync(normalizedPath, { throwIfNoEntry: false });
+			if (stats?.isSymbolicLink()) {
+				throw new PathValidationError('Symbolic links are not allowed');
+			}
+		}
+
+		return resolvedPath;
+	}
+
+	isPathSafe(inputPath: string): boolean {
+		try {
+			this.validatePath(inputPath, { mustExist: false });
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	getAllowedRoot(): string {
+		return this.allowedRoot;
+	}
+}
+
+let mediaPathValidator: PathValidator | null = null;
+
+export function getMediaPathValidator(): PathValidator {
+	if (!mediaPathValidator) {
+		const mediaPath = process.env.MEDIA_PATH || '/media';
+		
+		try {
+			mediaPathValidator = new PathValidator(mediaPath);
+		} catch (error) {
+			if (process.env.NODE_ENV === 'production') {
+				throw new Error(`Media path ${mediaPath} not accessible in production: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			}
+			
+			console.warn(`Media path ${mediaPath} not accessible in development, using fallback test-media directory`);
+			const fallbackPath = resolve(process.cwd(), 'test-media');
+			mediaPathValidator = new PathValidator(fallbackPath);
+		}
+	}
+	
+	return mediaPathValidator;
+}
+
+export function validateMediaPath(inputPath: string, options?: Partial<PathValidationOptions>): string {
+	const validator = getMediaPathValidator();
+	return validator.validatePath(inputPath, options);
+}
+
+export function isMediaPathSafe(inputPath: string): boolean {
+	const validator = getMediaPathValidator();
+	return validator.isPathSafe(inputPath);
+}
