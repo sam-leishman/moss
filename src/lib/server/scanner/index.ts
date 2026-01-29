@@ -22,8 +22,7 @@ export type {
 
 export {
 	LibraryScanner,
-	scanLibrary,
-	cleanupOrphanedMediaForLibrary
+	scanLibrary
 } from './library-scanner';
 
 export type {

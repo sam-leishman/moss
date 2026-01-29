@@ -4,6 +4,7 @@
 	interface FolderItem {
 		name: string;
 		path: string;
+		displayPath: string;
 		isDirectory: boolean;
 	}
 
@@ -14,6 +15,7 @@
 	let { onSelect }: Props = $props();
 
 	let currentPath = $state('');
+	let displayPath = $state('/media');
 	let parentPath = $state<string | null>(null);
 	let folders = $state<FolderItem[]>([]);
 	let loading = $state(false);
@@ -40,6 +42,7 @@
 
 			const data = await response.json();
 			currentPath = data.currentPath;
+			displayPath = data.displayPath || '/media';
 			parentPath = data.parentPath;
 			folders = data.folders;
 		} catch (err) {
@@ -54,19 +57,19 @@
 	}
 
 	function selectCurrentFolder() {
-		onSelect(currentPath);
+		// Pass the /media-prefixed path that works in Docker
+		const dockerPath = `/media${displayPath === '/' ? '' : displayPath}`;
+		onSelect(dockerPath);
 	}
 </script>
 
 <div class="flex flex-col gap-3">
-	<div class="flex items-center justify-between pb-3 border-b border-gray-200">
-		<div class="flex flex-col flex-1 min-w-0 gap-1">
-			<span class="text-xs font-medium text-gray-500 uppercase">Current:</span>
-			<span class="text-sm text-gray-900 truncate font-mono">{currentPath || '/'}</span>
+	<div class="pb-3 border-b border-gray-200">
+		<div class="flex items-center gap-2 mb-2">
+			<span class="text-xs font-medium text-gray-500 uppercase">Current Location:</span>
+			<span class="text-sm font-semibold text-blue-600 font-mono">/media{displayPath === '/' ? '' : displayPath}</span>
 		</div>
-		<button onclick={selectCurrentFolder} class="px-3 py-1.5 text-xs font-medium text-white transition-colors bg-blue-500 rounded-md hover:bg-blue-600">
-			Select This Folder
-		</button>
+		<p class="text-xs text-gray-600">Navigate to a folder below, then click Select to choose it.</p>
 	</div>
 
 	{#if error}
@@ -74,9 +77,9 @@
 	{/if}
 
 	{#if loading}
-		<div class="py-4 text-sm text-center text-gray-500">Loading folders...</div>
+		<div class="py-8 text-sm text-center text-gray-500">Loading folders...</div>
 	{:else}
-		<div class="flex flex-col gap-1 overflow-y-auto max-h-60">
+		<div class="flex flex-col gap-1.5 overflow-y-auto max-h-80">
 			{#if parentPath}
 				<button 
 					onclick={() => navigateToFolder(parentPath!)}
@@ -88,7 +91,9 @@
 			{/if}
 
 			{#if folders.length === 0}
-				<div class="py-4 text-sm text-center text-gray-500">No subfolders in this directory</div>
+				<div class="py-8 text-sm text-center text-gray-500">
+					<p>No subfolders in this directory.</p>
+				</div>
 			{:else}
 				{#each folders as folder (folder.path)}
 					<button 
@@ -102,5 +107,14 @@
 			{/if}
 		</div>
 	{/if}
+
+	<div class="pt-4 mt-4 border-t border-gray-200">
+		<button 
+			onclick={selectCurrentFolder}
+			class="w-full px-4 py-2.5 text-sm font-medium text-white transition-colors bg-blue-500 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+		>
+			Select /media{displayPath === '/' ? '' : displayPath}
+		</button>
+	</div>
 </div>
 

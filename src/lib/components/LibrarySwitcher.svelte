@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import FolderBrowser from './FolderBrowser.svelte';
 	import type { Library } from '$lib/server/db';
 
 	interface Props {
@@ -16,9 +17,11 @@
 	let error = $state<string | null>(null);
 	let scanning = $state(false);
 	let scanStats = $state<{ added: number; updated: number; removed: number } | null>(null);
+	let successMessage = $state<string | null>(null);
 
 	let newLibraryName = $state('');
 	let newLibraryPath = $state('');
+	let showFolderBrowserModal = $state(false);
 
 	onMount(() => {
 		loadLibraries();
@@ -63,6 +66,13 @@
 		showCreateModal = false;
 		newLibraryName = '';
 		newLibraryPath = '';
+		showFolderBrowserModal = false;
+		error = null;
+	}
+
+	function handleFolderSelect(path: string) {
+		newLibraryPath = path;
+		showFolderBrowserModal = false;
 	}
 
 	async function createLibrary() {
@@ -91,6 +101,21 @@
 			const data = await response.json();
 			libraries = [data.library, ...libraries];
 			selectLibrary(data.library);
+			
+			// Show scan results
+			if (data.scanStats) {
+				const { added, updated, errors } = data.scanStats;
+				if (errors > 0) {
+					successMessage = `Library created and scanned: ${added} files added, ${updated} updated (${errors} errors)`;
+				} else if (added > 0 || updated > 0) {
+					successMessage = `Library created and scanned: ${added} files added${updated > 0 ? `, ${updated} updated` : ''}`;
+				} else {
+					successMessage = 'Library created successfully (no media files found)';
+				}
+				// Auto-dismiss success message after 5 seconds
+				setTimeout(() => successMessage = null, 5000);
+			}
+			
 			closeCreateModal();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to create library';
@@ -129,37 +154,6 @@
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to scan library';
-		} finally {
-			scanning = false;
-		}
-	}
-
-	async function cleanupLibrary() {
-		if (!selectedLibrary || scanning) return;
-
-		scanning = true;
-		error = null;
-		scanStats = null;
-		showDropdown = false;
-
-		try {
-			const response = await fetch(`/api/libraries/${selectedLibrary.id}/cleanup`, {
-				method: 'POST'
-			});
-
-			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.message || 'Failed to cleanup library');
-			}
-
-			const data = await response.json();
-			scanStats = {
-				added: 0,
-				updated: 0,
-				removed: data.removedCount
-			};
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to cleanup library';
 		} finally {
 			scanning = false;
 		}
@@ -226,16 +220,6 @@
 						</svg>
 						<span>{scanning ? 'Scanning...' : 'Scan Library'}</span>
 					</button>
-					<button
-						onclick={cleanupLibrary}
-						disabled={scanning}
-						class="flex items-center w-full gap-2 px-4 py-2 text-sm transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-						</svg>
-						<span>Cleanup Orphaned</span>
-					</button>
 				</div>
 			{/if}
 			<div class="border-t border-gray-200">
@@ -290,10 +274,18 @@
 </div>
 
 {#if showCreateModal}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={closeCreateModal}>
-		<div class="w-full max-w-md bg-white rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()}>
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" 
+		onclick={closeCreateModal}
+		onkeydown={(e) => e.key === 'Escape' && closeCreateModal()}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="create-library-title-switcher"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
 			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-				<h3 class="text-lg font-semibold">New Library</h3>
+				<h3 id="create-library-title-switcher" class="text-lg font-semibold">Create New Library</h3>
 				<button onclick={closeCreateModal} class="flex items-center justify-center w-8 h-8 text-2xl text-gray-500 transition-colors hover:text-gray-900">
 					×
 				</button>
@@ -307,31 +299,38 @@
 				{/if}
 
 				<div class="mb-4">
-					<label for="library-name" class="block mb-2 text-sm font-medium text-gray-700">Library Name</label>
+					<label for="library-name-switcher" class="block mb-2 text-sm font-medium text-gray-700">Library Name</label>
 					<input
-						id="library-name"
+						id="library-name-switcher"
 						type="text"
 						bind:value={newLibraryName}
 						placeholder="My Media Library"
-						class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+						class="block w-full rounded-md text-sm focus:border-blue-500 focus:ring-blue-500"
 					/>
 				</div>
 
 				<div class="mb-4">
-					<label for="library-path" class="block mb-2 text-sm font-medium text-gray-700">Folder Path</label>
-					<input
-						id="library-path"
-						type="text"
-						bind:value={newLibraryPath}
-						placeholder="/media/photos"
-						class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-					/>
-					<p class="mt-1 text-xs text-gray-500">Path must be within /media directory</p>
+					<label for="library-path-switcher" class="block mb-2 text-sm font-medium text-gray-700">Folder Path</label>
+					<div class="flex gap-2">
+						<input
+							id="library-path-switcher"
+							type="text"
+							bind:value={newLibraryPath}
+							placeholder="/media/photos"
+							class="block flex-1 rounded-md text-sm focus:border-blue-500 focus:ring-blue-500"
+						/>
+						<button 
+							onclick={() => showFolderBrowserModal = true}
+							class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 hover:border-gray-400"
+						>
+						Browse
+						</button>
+					</div>
 				</div>
 			</div>
 
 			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
-				<button onclick={closeCreateModal} class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-200 rounded-md hover:bg-gray-300">
+				<button onclick={closeCreateModal} class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 hover:border-gray-400">
 					Cancel
 				</button>
 				<button 
@@ -340,6 +339,40 @@
 					disabled={loading || !newLibraryName.trim() || !newLibraryPath.trim()}
 				>
 					{loading ? 'Creating...' : 'Create'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showFolderBrowserModal}
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" 
+		onclick={() => showFolderBrowserModal = false}
+		onkeydown={(e) => e.key === 'Escape' && (showFolderBrowserModal = false)}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="folder-browser-title-switcher"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-2xl bg-white rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+				<h3 id="folder-browser-title-switcher" class="text-lg font-semibold">Select Folder</h3>
+				<button onclick={() => showFolderBrowserModal = false} class="flex items-center justify-center w-8 h-8 text-2xl text-gray-500 transition-colors hover:text-gray-900">
+					×
+				</button>
+			</div>
+			
+			<div class="p-6">
+				<FolderBrowser onSelect={handleFolderSelect} />
+			</div>
+
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
+				<button 
+					onclick={() => showFolderBrowserModal = false} 
+					class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 hover:border-gray-400"
+				>
+					Cancel
 				</button>
 			</div>
 		</div>

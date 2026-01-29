@@ -223,15 +223,3 @@ export async function scanLibrary(
 	const scanner = new LibraryScanner(library);
 	return scanner.scan(onProgress);
 }
-
-export async function cleanupOrphanedMediaForLibrary(libraryId: number): Promise<number> {
-	const db = getDatabase();
-	const library = db.prepare('SELECT * FROM library WHERE id = ?').get(libraryId) as Library | undefined;
-
-	if (!library) {
-		throw new Error(`Library ${libraryId} not found`);
-	}
-
-	const scanner = new LibraryScanner(library);
-	return scanner['cleanupOrphanedMedia']();
-}

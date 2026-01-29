@@ -10,6 +10,7 @@ const logger = getLogger('api:folders');
 interface FolderItem {
 	name: string;
 	path: string;
+	displayPath: string;
 	isDirectory: boolean;
 }
 
@@ -35,16 +36,29 @@ export const GET = async ({ url }: { url: URL }) => {
 		
 		const folders: FolderItem[] = entries
 			.filter(entry => entry.isDirectory())
-			.map(entry => ({
-				name: entry.name,
-				path: join(targetPath, entry.name),
-				isDirectory: true
-			}))
+			.map(entry => {
+				const fullPath = join(targetPath, entry.name);
+				const relativePath = fullPath.replace(mediaRoot, '') || '/';
+				return {
+					name: entry.name,
+					path: fullPath,
+					displayPath: relativePath === '/' ? '/' : relativePath,
+					isDirectory: true
+				};
+			})
 			.sort((a, b) => a.name.localeCompare(b.name));
+
+		const currentDisplayPath = targetPath.replace(mediaRoot, '') || '/';
+		const parentDisplayPath = targetPath !== mediaRoot 
+			? join(targetPath, '..').replace(mediaRoot, '') || '/'
+			: null;
 
 		return json({
 			currentPath: targetPath,
+			displayPath: currentDisplayPath === '/' ? '/' : currentDisplayPath,
+			mediaRoot: '/media',
 			parentPath: targetPath !== mediaRoot ? join(targetPath, '..') : null,
+			parentDisplayPath,
 			folders
 		});
 	} catch (error) {

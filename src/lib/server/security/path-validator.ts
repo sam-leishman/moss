@@ -44,9 +44,23 @@ export class PathValidator {
 			throw new PathValidationError('Path contains null bytes');
 		}
 
-		let normalizedPath = normalize(inputPath);
+		// Handle /media-prefixed paths by stripping the prefix
+		// This allows frontend to use Docker-style paths like /media/subfolder
+		// while backend resolves them relative to the actual media root
+		let processedPath = inputPath;
+		if (inputPath.startsWith('/media/')) {
+			processedPath = inputPath.substring(7); // Remove '/media/'
+		} else if (inputPath === '/media') {
+			processedPath = ''; // Root of media directory
+		}
 
+		let normalizedPath = normalize(processedPath || '.');
+
+		// Always resolve relative to allowed root since we've stripped /media prefix
 		if (!isAbsolute(normalizedPath)) {
+			normalizedPath = resolve(this.allowedRoot, normalizedPath);
+		} else if (processedPath !== inputPath) {
+			// If we stripped /media prefix, ensure we resolve relative to root
 			normalizedPath = resolve(this.allowedRoot, normalizedPath);
 		}
 

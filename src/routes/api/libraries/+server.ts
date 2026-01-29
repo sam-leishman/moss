@@ -4,6 +4,7 @@ import { validateMediaPath } from '$lib/server/security/path-validator';
 import { sanitizeLibraryName } from '$lib/server/security/sanitizer';
 import { ValidationError, DuplicateEntryError, handleError } from '$lib/server/errors';
 import { getLogger } from '$lib/server/logging';
+import { scanLibrary } from '$lib/server/scanner/library-scanner';
 import type { Library } from '$lib/server/db';
 
 const logger = getLogger('api:libraries');
@@ -52,7 +53,35 @@ export const POST = async ({ request }: { request: Request }) => {
 
 		logger.info(`Library created: ${sanitizedName} at ${validatedPath}`);
 		
-		return json({ library }, { status: 201 });
+		// Automatically scan the library after creation
+		logger.info(`Starting initial scan for library: ${library.name} (id: ${library.id})`);
+		let scanStats;
+		try {
+			scanStats = await scanLibrary(library);
+			logger.info(`Initial scan completed for library ${library.id}: ${scanStats.added} added, ${scanStats.updated} updated`);
+		} catch (scanError) {
+			// Log scan error but don't fail library creation
+			logger.error(`Initial scan failed for library ${library.id}`, scanError instanceof Error ? scanError : undefined);
+			scanStats = {
+				totalScanned: 0,
+				added: 0,
+				updated: 0,
+				removed: 0,
+				errors: [{ path: '', error: 'Scan failed during library creation' }],
+				duration: 0
+			};
+		}
+		
+		return json({ 
+			library,
+			scanStats: {
+				totalScanned: scanStats.totalScanned,
+				added: scanStats.added,
+				updated: scanStats.updated,
+				removed: scanStats.removed,
+				errors: scanStats.errors.length
+			}
+		}, { status: 201 });
 	} catch (error) {
 		logger.error('Failed to create library', error instanceof Error ? error : undefined);
 		return handleError(error);
