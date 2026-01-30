@@ -10,7 +10,6 @@
 	let { onLibraryChange }: Props = $props();
 
 	let libraries = $state<Library[]>([]);
-	let selectedLibrary = $state<Library | null>(null);
 	let showCreateModal = $state(false);
 	let showDeleteConfirm = $state(false);
 	let libraryToDelete = $state<Library | null>(null);
@@ -37,10 +36,6 @@
 			}
 			const data = await response.json();
 			libraries = data.libraries;
-			
-			if (libraries.length > 0 && !selectedLibrary) {
-				selectLibrary(libraries[0]);
-			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load libraries';
 		} finally {
@@ -49,7 +44,6 @@
 	}
 
 	function selectLibrary(library: Library) {
-		selectedLibrary = library;
 		onLibraryChange?.(library);
 	}
 
@@ -143,12 +137,6 @@
 			}
 
 			libraries = libraries.filter(lib => lib.id !== libraryToDelete!.id);
-			
-			if (selectedLibrary?.id === libraryToDelete.id) {
-				selectedLibrary = libraries.length > 0 ? libraries[0] : null;
-				onLibraryChange?.(selectedLibrary);
-			}
-
 			cancelDelete();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to delete library';
@@ -193,8 +181,7 @@
 		</div>
 	{/if}
 
-	<div class="flex items-center justify-between mb-4">
-		<h2 class="text-xl font-semibold">Libraries</h2>
+	<div class="flex items-center justify-end mb-4">
 		<button onclick={openCreateModal} class="px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-500 rounded-md hover:bg-blue-600">
 			+ New Library
 		</button>
@@ -209,10 +196,7 @@
 	{:else}
 		<div class="flex flex-col gap-2">
 			{#each libraries as library (library.id)}
-				<div 
-					class="library-item"
-					class:selected={selectedLibrary?.id === library.id}
-				>
+				<div class="library-item">
 					<button 
 						onclick={() => selectLibrary(library)}
 						class="flex-1 p-2 text-left bg-transparent border-none cursor-pointer"
@@ -389,10 +373,5 @@
 	.library-item:hover {
 		border-color: #3b82f6;
 		background: #eff6ff;
-	}
-
-	.library-item.selected {
-		border-color: #3b82f6;
-		background: #dbeafe;
 	}
 </style>

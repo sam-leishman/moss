@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import FolderBrowser from './FolderBrowser.svelte';
 	import type { Library } from '$lib/server/db';
 
 	interface Props {
-		onLibraryChange?: (library: Library | null) => void;
+		currentLibrary?: Library;
 	}
 
-	let { onLibraryChange }: Props = $props();
+	let { currentLibrary }: Props = $props();
 
 	let libraries = $state<Library[]>([]);
-	let selectedLibrary = $state<Library | null>(null);
 	let showDropdown = $state(false);
 	let showCreateModal = $state(false);
 	let loading = $state(false);
@@ -38,10 +38,6 @@
 			}
 			const data = await response.json();
 			libraries = data.libraries;
-			
-			if (libraries.length > 0 && !selectedLibrary) {
-				selectLibrary(libraries[0]);
-			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load libraries';
 		} finally {
@@ -50,9 +46,8 @@
 	}
 
 	function selectLibrary(library: Library) {
-		selectedLibrary = library;
 		showDropdown = false;
-		onLibraryChange?.(library);
+		goto(`/libraries/${library.id}`);
 	}
 
 	function openCreateModal() {
@@ -100,7 +95,8 @@
 
 			const data = await response.json();
 			libraries = [data.library, ...libraries];
-			selectLibrary(data.library);
+			closeCreateModal();
+			goto(`/libraries/${data.library.id}`);
 			
 			// Show scan results
 			if (data.scanStats) {
@@ -115,8 +111,6 @@
 				// Auto-dismiss success message after 5 seconds
 				setTimeout(() => successMessage = null, 5000);
 			}
-			
-			closeCreateModal();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to create library';
 		} finally {
@@ -125,7 +119,7 @@
 	}
 
 	async function scanLibrary() {
-		if (!selectedLibrary || scanning) return;
+		if (!currentLibrary || scanning) return;
 
 		scanning = true;
 		error = null;
@@ -133,7 +127,7 @@
 		showDropdown = false;
 
 		try {
-			const response = await fetch(`/api/libraries/${selectedLibrary.id}/scan`, {
+			const response = await fetch(`/api/libraries/${currentLibrary.id}/scan`, {
 				method: 'POST'
 			});
 
@@ -179,7 +173,7 @@
 		class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-white border border-gray-300 rounded-md hover:bg-gray-50"
 	>
 		<span>📚</span>
-		<span>{selectedLibrary?.name || 'Select Library'}</span>
+		<span>{currentLibrary?.name || 'Select Library'}</span>
 		<svg class="w-4 h-4 transition-transform" class:rotate-180={showDropdown} fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 		</svg>
@@ -195,11 +189,11 @@
 						<button
 							onclick={() => selectLibrary(library)}
 							class="flex items-center w-full gap-2 px-4 py-2 text-sm text-left transition-colors hover:bg-gray-50"
-							class:bg-blue-50={selectedLibrary?.id === library.id}
-							class:text-blue-600={selectedLibrary?.id === library.id}
+							class:bg-blue-50={currentLibrary?.id === library.id}
+							class:text-blue-600={currentLibrary?.id === library.id}
 						>
 							<span class="flex-1 truncate">{library.name}</span>
-							{#if selectedLibrary?.id === library.id}
+							{#if currentLibrary?.id === library.id}
 								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
 									<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
 								</svg>
@@ -208,7 +202,7 @@
 					{/each}
 				{/if}
 			</div>
-			{#if selectedLibrary}
+			{#if currentLibrary}
 				<div class="border-t border-gray-200">
 					<button
 						onclick={scanLibrary}
