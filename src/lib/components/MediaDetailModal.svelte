@@ -5,21 +5,56 @@
 	interface Props {
 		media: Media | null;
 		onClose: () => void;
+		currentIndex?: number;
+		totalItems?: number;
+		onNext?: () => void;
+		onPrevious?: () => void;
 	}
 
-	let { media, onClose }: Props = $props();
+	let { media, onClose, currentIndex, totalItems, onNext, onPrevious }: Props = $props();
+	let showInfo = $state(false);
 
-	const handleBackdropClick = (e: MouseEvent) => {
-		if (e.target === e.currentTarget) {
-			onClose();
+	const handleBackdropClick = () => {
+		if (showInfo) {
+			showInfo = false;
 		}
+	};
+
+	const handlePanelClick = (e: MouseEvent) => {
+		e.stopPropagation();
+	};
+
+	const withStopPropagation = (fn: () => void) => (e: MouseEvent) => {
+		e.stopPropagation();
+		fn();
 	};
 
 	const handleKeydown = (e: KeyboardEvent) => {
 		if (e.key === 'Escape') {
-			onClose();
+			if (showInfo) {
+				showInfo = false;
+			} else {
+				onClose();
+			}
+		} else if (e.key === 'ArrowLeft') {
+			e.preventDefault();
+			if (onPrevious && hasPrevious) {
+				onPrevious();
+			}
+		} else if (e.key === 'ArrowRight') {
+			e.preventDefault();
+			if (onNext && hasNext) {
+				onNext();
+			}
 		}
 	};
+
+	const toggleInfo = () => {
+		showInfo = !showInfo;
+	};
+
+	const hasPrevious = $derived(currentIndex !== undefined && currentIndex > 0);
+	const hasNext = $derived(currentIndex !== undefined && totalItems !== undefined && currentIndex < totalItems - 1);
 
 	const formatBytes = (bytes: number): string => {
 		if (bytes === 0) return '0 B';
@@ -37,80 +72,144 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if media}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+		class="fixed inset-0 z-50 bg-black/95"
 		onclick={handleBackdropClick}
-		onkeydown={handleKeydown}
 		role="dialog"
 		aria-modal="true"
-		tabindex="-1"
+		aria-label="Media viewer"
 	>
-		<div class="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-			<div class="flex items-center justify-between p-4 border-b border-gray-200">
-				<h2 class="text-lg font-semibold text-gray-900 truncate">
-					{media.title || basename(media.path)}
-				</h2>
+		<div class="relative w-full h-full flex items-center justify-center p-8 group">
+			{#if media.media_type === 'image' || media.media_type === 'animated'}
+				<img
+					src="/api/media/{media.id}/file"
+					alt={media.title || basename(media.path)}
+					class="max-w-full max-h-full object-contain"
+				/>
+			{:else if media.media_type === 'video'}
+				<video
+					src="/api/media/{media.id}/file"
+					controls
+					class="max-w-full max-h-full"
+				>
+					<track kind="captions" />
+				</video>
+			{/if}
+
+			<button
+				type="button"
+				onclick={withStopPropagation(onClose)}
+				class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+				aria-label="Close"
+			>
+				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+				</svg>
+			</button>
+
+			<button
+				type="button"
+				onclick={withStopPropagation(toggleInfo)}
+				class="absolute top-4 right-16 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+				aria-label="Toggle info"
+			>
+				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+				</svg>
+			</button>
+
+			{#if hasPrevious}
 				<button
 					type="button"
-					onclick={onClose}
-					class="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+					onclick={withStopPropagation(() => onPrevious?.())}
+					class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-all opacity-0 group-hover:opacity-100"
+					aria-label="Previous"
 				>
-					×
+					<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+					</svg>
 				</button>
-			</div>
+			{/if}
 
-			<div class="flex-1 overflow-y-auto p-6">
-				<div class="grid md:grid-cols-2 gap-6">
-					<div class="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center min-h-[400px]">
-						{#if media.media_type === 'image' || media.media_type === 'animated'}
-							<img
-								src="/api/media/{media.id}/file"
-								alt={media.title || basename(media.path)}
-								class="max-w-full max-h-[600px] object-contain"
-							/>
-						{:else if media.media_type === 'video'}
-							<video
-								src="/api/media/{media.id}/file"
-								controls
-								class="max-w-full max-h-[600px]"
-							>
-								<track kind="captions" />
-							</video>
-						{/if}
+			{#if hasNext}
+				<button
+					type="button"
+					onclick={withStopPropagation(() => onNext?.())}
+					class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-all opacity-0 group-hover:opacity-100"
+					aria-label="Next"
+				>
+					<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+					</svg>
+				</button>
+			{/if}
+
+			{#if currentIndex !== undefined && totalItems !== undefined}
+				<div class="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/50 text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+					{currentIndex + 1} / {totalItems}
+				</div>
+			{/if}
+		</div>
+
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="absolute top-0 right-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out {showInfo ? 'translate-x-0' : 'translate-x-full'}"
+			onclick={handlePanelClick}
+		>
+			<div class="h-full flex flex-col">
+				<div class="flex items-center justify-between p-4 border-b border-gray-200">
+					<h3 class="text-lg font-semibold text-gray-900">Information</h3>
+					<button
+						type="button"
+						onclick={withStopPropagation(toggleInfo)}
+						class="text-gray-400 hover:text-gray-600"
+						aria-label="Close info panel"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</button>
+				</div>
+
+				<div class="flex-1 overflow-y-auto p-4 space-y-4">
+					{#if media.title}
+						<div>
+							<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Title</h4>
+							<p class="text-gray-900">{media.title}</p>
+						</div>
+					{/if}
+
+					<div>
+						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Filename</h4>
+						<p class="text-gray-900 text-sm">{basename(media.path)}</p>
 					</div>
 
-					<div class="space-y-4">
-						<div>
-							<h3 class="text-sm font-medium text-gray-500 mb-1">Type</h3>
-							<p class="text-gray-900 capitalize">{media.media_type}</p>
-						</div>
+					<div>
+						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Type</h4>
+						<p class="text-gray-900 capitalize">{media.media_type}</p>
+					</div>
 
-						<div>
-							<h3 class="text-sm font-medium text-gray-500 mb-1">File Path</h3>
-							<p class="text-gray-900 text-sm break-all">{media.path}</p>
-						</div>
+					<div>
+						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">File Size</h4>
+						<p class="text-gray-900">{formatBytes(media.size)}</p>
+					</div>
 
-						<div>
-							<h3 class="text-sm font-medium text-gray-500 mb-1">File Size</h3>
-							<p class="text-gray-900">{formatBytes(media.size)}</p>
-						</div>
+					<div>
+						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Created</h4>
+						<p class="text-gray-900 text-sm">{formatDate(media.birthtime)}</p>
+					</div>
 
-						<div>
-							<h3 class="text-sm font-medium text-gray-500 mb-1">Created</h3>
-							<p class="text-gray-900">{formatDate(media.birthtime)}</p>
-						</div>
+					<div>
+						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Added to Library</h4>
+						<p class="text-gray-900 text-sm">{formatDate(media.created_at)}</p>
+					</div>
 
-						<div>
-							<h3 class="text-sm font-medium text-gray-500 mb-1">Added to Library</h3>
-							<p class="text-gray-900">{formatDate(media.created_at)}</p>
-						</div>
-
-						{#if media.title}
-							<div>
-								<h3 class="text-sm font-medium text-gray-500 mb-1">Custom Title</h3>
-								<p class="text-gray-900">{media.title}</p>
-							</div>
-						{/if}
+					<div>
+						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">File Path</h4>
+						<p class="text-gray-700 text-xs break-all font-mono bg-gray-50 p-2 rounded">{media.path}</p>
 					</div>
 				</div>
 			</div>

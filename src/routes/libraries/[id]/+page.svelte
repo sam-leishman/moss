@@ -91,6 +91,29 @@
 	const handleCloseDetail = () => {
 		selectedMedia = null;
 	};
+
+	const handleNextMedia = () => {
+		const current = selectedMedia;
+		if (!current) return;
+		const currentIndex = mediaItems.findIndex(item => item.id === current.id);
+		if (currentIndex >= 0 && currentIndex < mediaItems.length - 1) {
+			selectedMedia = mediaItems[currentIndex + 1];
+		}
+	};
+
+	const handlePreviousMedia = () => {
+		const current = selectedMedia;
+		if (!current) return;
+		const currentIndex = mediaItems.findIndex(item => item.id === current.id);
+		if (currentIndex > 0) {
+			selectedMedia = mediaItems[currentIndex - 1];
+		}
+	};
+
+	const selectedMediaIndex = $derived.by(() => {
+		const current = selectedMedia;
+		return current ? mediaItems.findIndex(item => item.id === current.id) : -1;
+	});
 </script>
 
 <div class="flex flex-col h-full">
@@ -159,4 +182,11 @@
 	</div>
 </div>
 
-<MediaDetailModal media={selectedMedia} onClose={handleCloseDetail} />
+<MediaDetailModal 
+	media={selectedMedia} 
+	onClose={handleCloseDetail}
+	currentIndex={selectedMediaIndex >= 0 ? selectedMediaIndex : undefined}
+	totalItems={mediaItems.length > 0 ? mediaItems.length : undefined}
+	onNext={handleNextMedia}
+	onPrevious={handlePreviousMedia}
+/>
