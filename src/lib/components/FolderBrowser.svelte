@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { Folder } from 'lucide-svelte';
 
 	interface FolderItem {
 		name: string;
@@ -85,7 +86,7 @@
 					onclick={() => navigateToFolder(parentPath!)}
 					class="flex items-center w-full gap-2 px-3 py-2 font-semibold text-left transition-colors bg-gray-50 border border-gray-200 rounded hover:bg-gray-100 hover:border-blue-500"
 				>
-					<span class="text-xl flex-shrink-0">📁</span>
+					<Folder class="w-5 h-5 flex-shrink-0 text-gray-600" />
 					<span class="flex-1 truncate text-gray-700">..</span>
 				</button>
 			{/if}
@@ -100,7 +101,7 @@
 						onclick={() => navigateToFolder(folder.path)}
 						class="flex items-center w-full gap-2 px-3 py-2 text-left transition-colors bg-white border border-gray-200 rounded hover:bg-gray-50 hover:border-blue-500"
 					>
-						<span class="text-xl flex-shrink-0">📁</span>
+						<Folder class="w-5 h-5 flex-shrink-0 text-gray-600" />
 						<span class="flex-1 truncate text-gray-700">{folder.name}</span>
 					</button>
 				{/each}

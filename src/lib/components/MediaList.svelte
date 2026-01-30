@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Media } from '$lib/server/db';
 	import { basename } from '$lib/utils/path';
+	import { Film, Clapperboard, Image } from 'lucide-svelte';
 
 	interface Props {
 		items: Media[];
@@ -26,17 +27,6 @@
 	const formatDate = (dateString: string): string => {
 		return new Date(dateString).toLocaleDateString();
 	};
-
-	const getMediaIcon = (type: string) => {
-		switch (type) {
-			case 'video':
-				return '🎬';
-			case 'animated':
-				return '🎞️';
-			default:
-				return '🖼️';
-		}
-	};
 </script>
 
 <div class="divide-y divide-gray-200">
@@ -57,7 +47,13 @@
 
 			<div class="flex-1 min-w-0">
 				<div class="flex items-center gap-2">
-					<span class="text-lg">{getMediaIcon(media.media_type)}</span>
+					{#if media.media_type === 'video'}
+						<Film class="w-5 h-5 text-gray-600" />
+					{:else if media.media_type === 'animated'}
+						<Clapperboard class="w-5 h-5 text-gray-600" />
+					{:else}
+						<Image class="w-5 h-5 text-gray-600" />
+					{/if}
 					<h3 class="text-sm font-medium text-gray-900 truncate">
 						{media.title || basename(media.path)}
 					</h3>

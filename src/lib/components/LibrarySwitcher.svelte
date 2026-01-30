@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import FolderBrowser from './FolderBrowser.svelte';
 	import type { Library } from '$lib/server/db';
+	import { Library as LibraryIcon } from 'lucide-svelte';
 
 	interface Props {
 		currentLibrary?: Library;
@@ -172,7 +173,7 @@
 		onclick={() => showDropdown = !showDropdown}
 		class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-white border border-gray-300 rounded-md hover:bg-gray-50"
 	>
-		<span>📚</span>
+		<LibraryIcon class="w-5 h-5" />
 		<span>{currentLibrary?.name || 'Select Library'}</span>
 		<svg class="w-4 h-4 transition-transform" class:rotate-180={showDropdown} fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />

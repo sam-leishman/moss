@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { MediaType } from '$lib/server/security';
+	import { Search, Grid3x3, List } from 'lucide-svelte';
 
 	interface Props {
 		searchQuery: string;
@@ -56,7 +57,7 @@
 					type="submit"
 					class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
 				>
-					🔍
+					<Search class="w-5 h-5" />
 				</button>
 			</div>
 		</form>
@@ -77,16 +78,18 @@
 				<button
 					type="button"
 					onclick={() => onViewModeChange('grid')}
-					class="px-4 py-2 {viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}"
+					class="flex items-center gap-2 px-4 py-2 {viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}"
 				>
-					⊞ Grid
+					<Grid3x3 class="w-4 h-4" />
+					<span>Grid</span>
 				</button>
 				<button
 					type="button"
 					onclick={() => onViewModeChange('list')}
-					class="px-4 py-2 border-l border-gray-300 {viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}"
+					class="flex items-center gap-2 px-4 py-2 border-l border-gray-300 {viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}"
 				>
-					☰ List
+					<List class="w-4 h-4" />
+					<span>List</span>
 				</button>
 			</div>
 		</div>

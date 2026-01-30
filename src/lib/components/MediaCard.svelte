@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Media } from '$lib/server/db';
 	import { basename } from '$lib/utils/path';
+	import { Film, Clapperboard, Image } from 'lucide-svelte';
 
 	interface Props {
 		media: Media;
@@ -15,16 +16,16 @@
 		}
 	};
 
-	const getMediaIcon = (type: string) => {
-		switch (type) {
+	const IconComponent = $derived.by(() => {
+		switch (media.media_type) {
 			case 'video':
-				return '🎬';
+				return Film;
 			case 'animated':
-				return '🎞️';
+				return Clapperboard;
 			default:
-				return '🖼️';
+				return Image;
 		}
-	};
+	});
 
 	const displayTitle = $derived(media.title || basename(media.path));
 </script>
@@ -41,8 +42,8 @@
 		loading="lazy"
 	/>
 	
-	<div class="absolute top-2 right-2 text-2xl opacity-80">
-		{getMediaIcon(media.media_type)}
+	<div class="absolute top-2 right-2 opacity-80">
+		<IconComponent class="w-6 h-6 text-white drop-shadow-lg" />
 	</div>
 
 	<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">

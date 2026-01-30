@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import FolderBrowser from './FolderBrowser.svelte';
 	import type { Library } from '$lib/server/db';
+	import { Trash2 } from 'lucide-svelte';
 
 	interface Props {
 		onLibraryChange?: (library: Library | null) => void;
@@ -208,10 +209,10 @@
 					</button>
 					<button 
 						onclick={() => confirmDelete(library)}
-						class="p-2 text-xl transition-opacity bg-transparent border-none cursor-pointer opacity-60 hover:opacity-100"
+						class="p-2 transition-opacity bg-transparent border-none cursor-pointer opacity-60 hover:opacity-100"
 						title="Delete library"
 					>
-						🗑️
+						<Trash2 class="w-5 h-5 text-red-600" />
 					</button>
 				</div>
 			{/each}
