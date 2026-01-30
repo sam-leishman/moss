@@ -14,6 +14,7 @@ export interface Media {
 	media_type: 'image' | 'video' | 'animated';
 	size: number;
 	mtime: string;
+	birthtime: string;
 	created_at: string;
 	updated_at: string;
 }

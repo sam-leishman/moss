@@ -10,6 +10,7 @@ export interface ScannedFile {
 	mediaType: MediaType;
 	size: number;
 	mtime: Date;
+	birthtime: Date;
 }
 
 export interface ScanOptions {
@@ -144,7 +145,8 @@ export class FileScanner {
 							relativePath: relative(this.rootPath, fullPath),
 							mediaType,
 							size: stats.size,
-							mtime: stats.mtime
+							mtime: stats.mtime,
+							birthtime: stats.birthtime
 						};
 
 						this.scannedFiles.push(scannedFile);

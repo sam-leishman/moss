@@ -1,6 +1,7 @@
 import { getDatabase } from '$lib/server/db';
 import { FileScanner } from './file-scanner';
 import { getLogger } from '$lib/server/logging';
+import { getThumbnailGenerator } from '$lib/server/thumbnails';
 import type { Library, Media } from '$lib/server/db';
 import type { ScannedFile } from './file-scanner';
 import { existsSync } from 'fs';
@@ -165,6 +166,7 @@ export class LibraryScanner {
 			.get(file.path, this.libraryId) as Media | undefined;
 
 		const mtimeString = file.mtime.toISOString();
+		const birthtimeString = file.birthtime.toISOString();
 
 		if (existing) {
 			// Check if file has been modified
@@ -181,9 +183,9 @@ export class LibraryScanner {
 		} else {
 			// Insert new media file
 			db.prepare(`
-				INSERT INTO media (library_id, path, media_type, size, mtime)
-				VALUES (?, ?, ?, ?, ?)
-			`).run(this.libraryId, file.path, file.mediaType, file.size, mtimeString);
+				INSERT INTO media (library_id, path, media_type, size, mtime, birthtime)
+				VALUES (?, ?, ?, ?, ?, ?)
+			`).run(this.libraryId, file.path, file.mediaType, file.size, mtimeString, birthtimeString);
 			
 			stats.added++;
 			logger.debug(`Added new media file: ${file.path}`);
@@ -192,6 +194,7 @@ export class LibraryScanner {
 
 	private async cleanupOrphanedMedia(): Promise<number> {
 		const db = getDatabase();
+		const thumbnailGen = getThumbnailGenerator();
 
 		// Get all media files for this library
 		const mediaFiles = db.prepare('SELECT id, path FROM media WHERE library_id = ?')
@@ -202,6 +205,14 @@ export class LibraryScanner {
 		for (const media of mediaFiles) {
 			// Check if file still exists on disk
 			if (!existsSync(media.path)) {
+				// Delete thumbnail first
+				try {
+					await thumbnailGen.deleteThumbnail(media.path);
+				} catch (error) {
+					logger.warn(`Failed to delete thumbnail for ${media.path}: ${error instanceof Error ? error.message : String(error)}`);
+				}
+
+				// Delete from database
 				db.prepare('DELETE FROM media WHERE id = ?').run(media.id);
 				removedCount++;
 				logger.info(`Removed orphaned media: ${media.path}`);

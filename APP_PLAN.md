@@ -116,12 +116,12 @@ The application supports detailed credit attribution for media items:
 - [x] Orphaned media cleanup (files deleted from disk)
 
 ### Phase 3: Media Browsing
-- [ ] Media grid/list views with lazy loading
-- [ ] Thumbnail generation (stored in /metadata volume)
-- [ ] Thumbnail cleanup for orphaned media
-- [ ] Pagination for large libraries (100 items per page)
-- [ ] Basic filtering and search with indexed queries
-- [ ] Media detail view with type-specific viewers
+- [x] Media grid/list views with lazy loading
+- [x] Thumbnail generation (stored in /metadata volume)
+- [x] Thumbnail cleanup for orphaned media
+- [x] Pagination for large libraries (100 items per page)
+- [x] Basic filtering and search with indexed queries
+- [x] Media detail view with type-specific viewers
 
 ### Phase 4: Tagging System
 - [ ] Tag creation and management with validation

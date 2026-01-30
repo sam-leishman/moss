@@ -34,6 +34,30 @@ export const migrations: Migration[] = [
 				db.exec(`DROP TABLE IF EXISTS ${table}`);
 			}
 		}
+	},
+	{
+		version: 2,
+		up: (db: Database.Database) => {
+			// SQLite ALTER TABLE only supports constant defaults, not function calls
+			// Add column with constant default, then update existing rows
+			db.exec(`ALTER TABLE media ADD COLUMN birthtime TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'`);
+			
+			// Update existing rows to use mtime as birthtime (best approximation for existing data)
+			db.exec(`UPDATE media SET birthtime = mtime WHERE birthtime = '1970-01-01T00:00:00.000Z'`);
+			
+			const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
+			stmt.run(2);
+		},
+		down: (db: Database.Database) => {
+			db.exec(`
+				CREATE TABLE media_backup AS SELECT 
+					id, library_id, path, title, media_type, size, mtime, created_at, updated_at
+				FROM media
+			`);
+			db.exec('DROP TABLE media');
+			db.exec('ALTER TABLE media_backup RENAME TO media');
+			db.exec('DELETE FROM schema_version WHERE version = 2');
+		}
 	}
 ];
 
