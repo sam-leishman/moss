@@ -3,6 +3,7 @@
 	import { basename } from '$lib/utils/path';
 	import TagSelector from './TagSelector.svelte';
 	import CreditSelector from './CreditSelector.svelte';
+	import TitleEditor from './TitleEditor.svelte';
 	import { X, Info, Pencil, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
 	interface Props {
@@ -12,12 +13,39 @@
 		totalItems?: number;
 		onNext?: () => void;
 		onPrevious?: () => void;
+		onMediaUpdate?: (updatedMedia: Media) => void;
 	}
 
-	let { media, onClose, currentIndex, totalItems, onNext, onPrevious }: Props = $props();
+	let { media, onClose, currentIndex, totalItems, onNext, onPrevious, onMediaUpdate }: Props = $props();
 	let showInfo = $state(false);
 	let showEdit = $state(false);
 	let credits = $state<Person[]>([]);
+	let mediaData = $state<Media | null>(media);
+	let creditsAbortController: AbortController | null = null;
+	let mediaDataAbortController: AbortController | null = null;
+
+	$effect(() => {
+		mediaData = media;
+		if (creditsAbortController) {
+			creditsAbortController.abort();
+			creditsAbortController = null;
+		}
+		if (mediaDataAbortController) {
+			mediaDataAbortController.abort();
+			mediaDataAbortController = null;
+		}
+		
+		return () => {
+			if (creditsAbortController) {
+				creditsAbortController.abort();
+				creditsAbortController = null;
+			}
+			if (mediaDataAbortController) {
+				mediaDataAbortController.abort();
+				mediaDataAbortController = null;
+			}
+		};
+	});
 
 	const handleBackdropClick = () => {
 		if (showInfo) {
@@ -68,13 +96,69 @@
 
 	const loadCredits = async () => {
 		if (!media) return;
+		
+		if (creditsAbortController) {
+			creditsAbortController.abort();
+		}
+		
+		creditsAbortController = new AbortController();
+		const currentMediaId = media.id;
+		
 		try {
-			const response = await fetch(`/api/media/${media.id}/credits`);
-			if (response.ok) {
+			const response = await fetch(`/api/media/${currentMediaId}/credits`, {
+				signal: creditsAbortController.signal
+			});
+			
+			if (!response.ok) {
+				console.error(`Failed to load credits: ${response.status}`);
+				return;
+			}
+			
+			if (media?.id === currentMediaId) {
 				credits = await response.json();
 			}
 		} catch (err) {
+			if (err instanceof Error && err.name === 'AbortError') {
+				return;
+			}
 			console.error('Failed to load credits', err);
+		} finally {
+			creditsAbortController = null;
+		}
+	};
+
+	const refreshMediaData = async () => {
+		if (!media) return;
+		
+		if (mediaDataAbortController) {
+			mediaDataAbortController.abort();
+		}
+		
+		mediaDataAbortController = new AbortController();
+		const currentMediaId = media.id;
+		
+		try {
+			const response = await fetch(`/api/media/${currentMediaId}`, {
+				signal: mediaDataAbortController.signal
+			});
+			
+			if (!response.ok) {
+				console.error(`Failed to refresh media data: ${response.status}`);
+				return;
+			}
+			
+			if (media?.id === currentMediaId) {
+				const updated = await response.json();
+				mediaData = updated;
+				onMediaUpdate?.(updated);
+			}
+		} catch (err) {
+			if (err instanceof Error && err.name === 'AbortError') {
+				return;
+			}
+			console.error('Failed to refresh media data', err);
+		} finally {
+			mediaDataAbortController = null;
 		}
 	};
 
@@ -205,10 +289,10 @@
 				</div>
 
 				<div class="flex-1 overflow-y-auto p-4 space-y-4">
-					{#if media.title}
+					{#if mediaData?.title}
 						<div>
 							<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Title</h4>
-							<p class="text-gray-900 dark:text-white">{media.title}</p>
+							<p class="text-gray-900 dark:text-white">{mediaData.title}</p>
 						</div>
 					{/if}
 
@@ -284,7 +368,15 @@
 				</div>
 
 				<div class="flex-1 overflow-y-auto p-4 space-y-6">
-					<TagSelector mediaId={media.id} />
+					<TitleEditor 
+						mediaId={media.id} 
+						currentTitle={mediaData?.title || null} 
+						filePath={media.path}
+						onUpdate={refreshMediaData}
+					/>
+					<div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+						<TagSelector mediaId={media.id} />
+					</div>
 					<div class="border-t border-gray-200 dark:border-gray-700 pt-4">
 						<CreditSelector mediaId={media.id} />
 					</div>

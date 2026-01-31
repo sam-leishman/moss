@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import { User } from 'lucide-svelte';
 	import type { Person, ArtistProfile, PerformerProfile, Media } from '$lib/server/db';
+	import { basename } from '$lib/utils/path';
 
 	let person = $state<Person | null>(null);
 	let profile = $state<ArtistProfile | PerformerProfile | null>(null);
@@ -104,15 +105,13 @@
 							class="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all"
 						>
 							<img
-								src="/api/thumbnails/{media.id}"
-								alt={media.title || 'Media item'}
+								src="/api/media/{media.id}/thumbnail"
+								alt={media.title || basename(media.path)}
 								class="w-full h-full object-cover"
 							/>
-							{#if media.title}
-								<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-									<p class="text-white text-sm truncate">{media.title}</p>
-								</div>
-							{/if}
+							<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+								<p class="text-white text-sm truncate">{media.title || basename(media.path)}</p>
+							</div>
 						</a>
 					{/each}
 				</div>

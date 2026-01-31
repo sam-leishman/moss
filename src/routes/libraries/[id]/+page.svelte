@@ -9,6 +9,7 @@
 	import Pagination from '$lib/components/Pagination.svelte';
 	import BulkEditingPanel from '$lib/components/BulkEditingPanel.svelte';
 	import { Check } from 'lucide-svelte';
+	import { basename } from '$lib/utils/path';
 
 	let { data }: { data: PageData } = $props();
 
@@ -105,6 +106,17 @@
 
 	const handleCloseDetail = () => {
 		selectedMedia = null;
+	};
+
+	const handleMediaUpdate = (updatedMedia: Media) => {
+		const index = mediaItems.findIndex(item => item.id === updatedMedia.id);
+		if (index >= 0) {
+			mediaItems[index] = updatedMedia;
+			mediaItems = [...mediaItems];
+		}
+		if (selectedMedia?.id === updatedMedia.id) {
+			selectedMedia = updatedMedia;
+		}
 	};
 
 	const handleNextMedia = () => {
@@ -267,7 +279,7 @@
 								>
 									<img
 										src="/api/media/{media.id}/thumbnail"
-										alt={media.title || media.path}
+										alt={media.title || basename(media.path)}
 										class="w-full h-full object-cover"
 									/>
 								</button>
@@ -306,6 +318,7 @@
 	totalItems={mediaItems.length > 0 ? mediaItems.length : undefined}
 	onNext={handleNextMedia}
 	onPrevious={handlePreviousMedia}
+	onMediaUpdate={handleMediaUpdate}
 />
 
 {#if showBulkEditPanel}
