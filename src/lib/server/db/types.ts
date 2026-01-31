@@ -2,6 +2,8 @@ export interface Library {
 	id: number;
 	name: string;
 	folder_path: string;
+	path_status: 'ok' | 'missing' | 'error';
+	path_error: string | null;
 	created_at: string;
 	updated_at: string;
 }

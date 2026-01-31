@@ -58,6 +58,26 @@ export const migrations: Migration[] = [
 			db.exec('ALTER TABLE media_backup RENAME TO media');
 			db.exec('DELETE FROM schema_version WHERE version = 2');
 		}
+	},
+	{
+		version: 3,
+		up: (db: Database.Database) => {
+			db.exec(`ALTER TABLE library ADD COLUMN path_status TEXT NOT NULL DEFAULT 'ok' CHECK(path_status IN ('ok', 'missing', 'error'))`);
+			db.exec(`ALTER TABLE library ADD COLUMN path_error TEXT`);
+			
+			const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
+			stmt.run(3);
+		},
+		down: (db: Database.Database) => {
+			db.exec(`
+				CREATE TABLE library_backup AS SELECT 
+					id, name, folder_path, created_at, updated_at
+				FROM library
+			`);
+			db.exec('DROP TABLE library');
+			db.exec('ALTER TABLE library_backup RENAME TO library');
+			db.exec('DELETE FROM schema_version WHERE version = 3');
+		}
 	}
 ];
 

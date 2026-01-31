@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
 	import FolderBrowser from './FolderBrowser.svelte';
 	import type { Library } from '$lib/server/db';
-	import { Trash2, X } from 'lucide-svelte';
+	import { Trash2, X, AlertTriangle, FolderOpen } from 'lucide-svelte';
 
 	interface Props {
 		onLibraryChange?: (library: Library | null) => void;
@@ -13,14 +14,18 @@
 	let libraries = $state<Library[]>([]);
 	let showCreateModal = $state(false);
 	let showDeleteConfirm = $state(false);
+	let showRelocateModal = $state(false);
 	let libraryToDelete = $state<Library | null>(null);
+	let libraryToRelocate = $state<Library | null>(null);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
 
 	let newLibraryName = $state('');
 	let newLibraryPath = $state('');
+	let relocatePath = $state('');
 	let showFolderBrowserModal = $state(false);
+	let showRelocateFolderBrowser = $state(false);
 
 	onMount(() => {
 		loadLibraries();
@@ -151,6 +156,61 @@
 		showFolderBrowserModal = false;
 	}
 
+	function handleRelocateFolderSelect(path: string) {
+		relocatePath = path;
+		showRelocateFolderBrowser = false;
+	}
+
+	function openRelocateModal(library: Library) {
+		libraryToRelocate = library;
+		relocatePath = '';
+		showRelocateModal = true;
+		showRelocateFolderBrowser = false;
+	}
+
+	function closeRelocateModal() {
+		showRelocateModal = false;
+		libraryToRelocate = null;
+		relocatePath = '';
+		showRelocateFolderBrowser = false;
+		error = null;
+	}
+
+	async function relocateLibrary() {
+		if (!libraryToRelocate || !relocatePath.trim()) {
+			error = 'Please select a folder path';
+			return;
+		}
+
+		loading = true;
+		error = null;
+		try {
+			const response = await fetch(`/api/libraries/${libraryToRelocate.id}/relocate`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					folder_path: relocatePath.trim()
+				})
+			});
+
+			if (!response.ok) {
+				const data = await response.json();
+				throw new Error(data.message || 'Failed to relocate library');
+			}
+
+			const data = await response.json();
+			libraries = libraries.map(lib => lib.id === data.library.id ? data.library : lib);
+			await invalidateAll();
+			successMessage = `Library relocated successfully to ${getDisplayPath(data.library.folder_path)}`;
+			setTimeout(() => successMessage = null, 5000);
+			closeRelocateModal();
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to relocate library';
+		} finally {
+			loading = false;
+		}
+	}
+
 	function getDisplayPath(fullPath: string): string {
 		// Convert full system path to /media format for display
 		// In development, this strips the test-media prefix
@@ -197,23 +257,44 @@
 	{:else}
 		<div class="flex flex-col gap-2">
 			{#each libraries as library (library.id)}
-				<div class="library-item">
+				<div class="library-item {library.path_status === 'missing' || library.path_status === 'error' ? 'library-item-error' : ''}">
 					<button 
 						onclick={() => selectLibrary(library)}
 						class="flex-1 p-2 text-left bg-transparent border-none cursor-pointer"
 					>
 						<div class="flex flex-col gap-1">
-							<span class="font-semibold text-gray-900 dark:text-white">{library.name}</span>
+							<div class="flex items-center gap-2">
+								<span class="font-semibold text-gray-900 dark:text-white">{library.name}</span>
+								{#if library.path_status === 'missing' || library.path_status === 'error'}
+									<span title={library.path_error || 'Path error'}>
+										<AlertTriangle class="w-4 h-4 text-amber-600" />
+									</span>
+								{/if}
+							</div>
 							<span class="text-sm text-gray-600 dark:text-gray-400 font-mono">{getDisplayPath(library.folder_path)}</span>
+							{#if library.path_error}
+								<span class="text-xs text-amber-600 dark:text-amber-500">{library.path_error}</span>
+							{/if}
 						</div>
 					</button>
-					<button 
-						onclick={() => confirmDelete(library)}
-						class="p-2 transition-opacity bg-transparent border-none cursor-pointer opacity-60 hover:opacity-100"
-						title="Delete library"
-					>
-						<Trash2 class="w-5 h-5 text-red-600" />
-					</button>
+					<div class="flex items-center gap-1">
+						{#if library.path_status === 'missing' || library.path_status === 'error'}
+							<button 
+								onclick={() => openRelocateModal(library)}
+								class="p-2 transition-opacity bg-transparent border-none cursor-pointer opacity-60 hover:opacity-100"
+								title="Relocate library"
+							>
+								<FolderOpen class="w-5 h-5 text-blue-600" />
+							</button>
+						{/if}
+						<button 
+							onclick={() => confirmDelete(library)}
+							class="p-2 transition-opacity bg-transparent border-none cursor-pointer opacity-60 hover:opacity-100"
+							title="Delete library"
+						>
+							<Trash2 class="w-5 h-5 text-red-600" />
+						</button>
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -359,6 +440,111 @@
 	</div>
 {/if}
 
+{#if showRelocateModal && libraryToRelocate}
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" 
+		onclick={closeRelocateModal}
+		onkeydown={(e) => e.key === 'Escape' && closeRelocateModal()}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="relocate-library-title"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<h3 id="relocate-library-title" class="text-lg font-semibold text-gray-900 dark:text-white">Relocate Library</h3>
+				<button onclick={closeRelocateModal} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-6 h-6" />
+				</button>
+			</div>
+			
+			<div class="p-6">
+				{#if error}
+					<div class="px-3 py-2 mb-4 text-sm text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+						{error}
+					</div>
+				{/if}
+
+				<div class="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
+					<div class="flex items-start gap-2">
+						<AlertTriangle class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+						<div class="text-sm text-amber-800 dark:text-amber-200">
+							<p class="font-medium mb-1">Library path is not accessible</p>
+							<p>The folder for <strong>{libraryToRelocate.name}</strong> cannot be found. Select the new location to restore access to your media.</p>
+						</div>
+					</div>
+				</div>
+
+				<div class="mb-4">
+					<label for="relocate-path" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">New Folder Path</label>
+					<div class="flex gap-2">
+						<input
+							id="relocate-path"
+							type="text"
+							bind:value={relocatePath}
+							placeholder="/media/photos"
+							class="block flex-1 rounded-md text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
+						/>
+						<button 
+							onclick={() => showRelocateFolderBrowser = true}
+							class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+						>
+							Browse
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+				<button onclick={closeRelocateModal} class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">
+					Cancel
+				</button>
+				<button 
+					onclick={relocateLibrary} 
+					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+					disabled={loading || !relocatePath.trim()}
+				>
+					{loading ? 'Relocating...' : 'Relocate Library'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showRelocateFolderBrowser}
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" 
+		onclick={() => showRelocateFolderBrowser = false}
+		onkeydown={(e) => e.key === 'Escape' && (showRelocateFolderBrowser = false)}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="relocate-folder-browser-title"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<h3 id="relocate-folder-browser-title" class="text-lg font-semibold text-gray-900 dark:text-white">Select New Folder</h3>
+				<button onclick={() => showRelocateFolderBrowser = false} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-6 h-6" />
+				</button>
+			</div>
+			
+			<div class="p-6">
+				<FolderBrowser onSelect={handleRelocateFolderSelect} />
+			</div>
+
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+				<button 
+					onclick={() => showRelocateFolderBrowser = false} 
+					class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+				>
+					Cancel
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.library-item {
 		display: flex;
@@ -375,6 +561,16 @@
 		background: #eff6ff;
 	}
 
+	.library-item-error {
+		border-color: #f59e0b;
+		background: #fffbeb;
+	}
+
+	.library-item-error:hover {
+		border-color: #d97706;
+		background: #fef3c7;
+	}
+
 	@media (prefers-color-scheme: dark) {
 		:global(.dark) .library-item {
 			border-color: #374151;
@@ -382,6 +578,16 @@
 
 		:global(.dark) .library-item:hover {
 			background: rgba(30, 58, 138, 0.125);
+		}
+
+		:global(.dark) .library-item-error {
+			border-color: #d97706;
+			background: rgba(217, 119, 6, 0.1);
+		}
+
+		:global(.dark) .library-item-error:hover {
+			border-color: #f59e0b;
+			background: rgba(245, 158, 11, 0.15);
 		}
 	}
 </style>

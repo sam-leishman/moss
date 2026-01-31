@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const createTablesSQL = `
 -- Schema version tracking
@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS library (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	name TEXT NOT NULL UNIQUE,
 	folder_path TEXT NOT NULL UNIQUE,
+	path_status TEXT NOT NULL DEFAULT 'ok' CHECK(path_status IN ('ok', 'missing', 'error')),
+	path_error TEXT,
 	created_at TEXT NOT NULL DEFAULT (datetime('now')),
 	updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

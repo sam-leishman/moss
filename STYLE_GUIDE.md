@@ -39,6 +39,12 @@ This document outlines the design system and styling conventions for the XView a
 - Border: `border-green-200` / `dark:border-green-800`
 - Text: `text-green-800` / `dark:text-green-200`
 
+#### Warning
+- Background: `bg-amber-50` / `dark:bg-amber-900/20`
+- Border: `border-amber-200` / `dark:border-amber-800`
+- Text: `text-amber-800` / `dark:text-amber-200`
+- Accent: `text-amber-600` / `dark:text-amber-400`
+
 #### Error
 - Background: `bg-red-50` / `dark:bg-red-900/20`
 - Border: `border-red-200` / `dark:border-red-800`

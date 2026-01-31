@@ -50,6 +50,63 @@ export class LibraryScanner {
 		logger.info(`Starting scan for library ${this.libraryId} at ${this.folderPath}`);
 
 		try {
+			const db = getDatabase();
+			
+			if (!existsSync(this.folderPath)) {
+				const errorMessage = 'Library folder does not exist or is not accessible';
+				
+				try {
+					db.prepare(`
+						UPDATE library 
+						SET path_status = 'missing', 
+						    path_error = ?,
+						    updated_at = datetime('now')
+						WHERE id = ?
+					`).run(errorMessage, this.libraryId);
+				} catch (dbError) {
+					if (dbError instanceof Error && dbError.message.includes('no such column')) {
+						logger.warn(`Could not update library path_status (migration may not have run yet): ${dbError.message}`);
+					} else {
+						logger.error(`Failed to update library path_status: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+						throw dbError;
+					}
+				}
+				
+				stats.duration = Date.now() - startTime;
+				stats.errors.push({ path: this.folderPath, error: errorMessage });
+				
+				logger.error(`Scan failed for library ${this.libraryId}: ${errorMessage}`);
+				
+				onProgress?.({
+					libraryId: this.libraryId,
+					totalFiles: 0,
+					processedFiles: 0,
+					addedFiles: 0,
+					updatedFiles: 0,
+					errors: 1,
+					status: 'failed'
+				});
+				
+				return stats;
+			}
+			
+			try {
+				db.prepare(`
+					UPDATE library 
+					SET path_status = 'ok', 
+					    path_error = NULL,
+					    updated_at = datetime('now')
+				WHERE id = ?
+				`).run(this.libraryId);
+			} catch (dbError) {
+				if (dbError instanceof Error && dbError.message.includes('no such column')) {
+					logger.warn(`Could not update library path_status (migration may not have run yet): ${dbError.message}`);
+				} else {
+					logger.error(`Failed to update library path_status: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+					throw dbError;
+				}
+			}
+
 			// Update progress: scanning
 			onProgress?.({
 				libraryId: this.libraryId,
@@ -90,7 +147,6 @@ export class LibraryScanner {
 			});
 
 			// Process scanned files and update database
-			const db = getDatabase();
 			let processedCount = 0;
 
 			for (const file of scanResult.files) {

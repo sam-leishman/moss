@@ -20,6 +20,29 @@ export const POST = async ({ params }: { params: { id: string } }) => {
 
 		const stats = await scanLibrary(library);
 
+		const pathMissingError = stats.errors.find(e => 
+			e.path === library.folder_path && 
+			e.error === 'Library folder does not exist or is not accessible'
+		);
+
+		if (pathMissingError) {
+			logger.error(`Library ${params.id} path is missing`);
+			
+			return json({
+				success: false,
+				error: 'Library folder does not exist or is not accessible. Please relocate or delete this library.',
+				pathMissing: true,
+				stats: {
+					totalScanned: stats.totalScanned,
+					added: stats.added,
+					updated: stats.updated,
+					removed: stats.removed,
+					errors: stats.errors.length,
+					duration: stats.duration
+				}
+			}, { status: 400 });
+		}
+
 		logger.info(`Scan completed for library ${params.id}: ${stats.added} added, ${stats.updated} updated, ${stats.removed} removed`);
 
 		return json({

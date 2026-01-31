@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import FolderBrowser from './FolderBrowser.svelte';
 	import type { Library } from '$lib/server/db';
 	import { Library as LibraryIcon, ChevronDown, Check, RefreshCw, Plus, X } from 'lucide-svelte';
@@ -132,20 +132,29 @@
 				method: 'POST'
 			});
 
-			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.message || 'Failed to scan library');
-			}
-
 			const data = await response.json();
-			scanStats = {
-				added: data.stats.added,
-				updated: data.stats.updated,
-				removed: data.stats.removed
-			};
 
-			if (data.errors && data.errors.length > 0) {
-				error = `Scan completed with ${data.errors.length} error(s)`;
+			if (!response.ok) {
+				if (data.pathMissing) {
+					const errorMessage = data.error || 'Library folder does not exist or is not accessible. Please relocate or delete this library.';
+					await loadLibraries();
+					await invalidateAll();
+					error = errorMessage;
+				} else {
+					throw new Error(data.message || 'Failed to scan library');
+				}
+			} else {
+				scanStats = {
+					added: data.stats.added,
+					updated: data.stats.updated,
+					removed: data.stats.removed
+				};
+
+				if (data.errors && data.errors.length > 0) {
+					error = `Scan completed with ${data.errors.length} error(s)`;
+				}
+				
+				await loadLibraries();
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to scan library';
@@ -221,7 +230,17 @@
 		</div>
 	{/if}
 
-	{#if scanStats}
+	{#if error}
+		<div class="fixed top-20 right-6 z-50 w-80 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-lg shadow-lg p-4">
+			<div class="flex items-start justify-between mb-3">
+				<h4 class="font-semibold text-red-900 dark:text-red-200">Scan Error</h4>
+				<button onclick={() => error = null} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-5 h-5" />
+				</button>
+			</div>
+			<p class="text-sm text-red-800 dark:text-red-200">{error}</p>
+		</div>
+	{:else if scanStats}
 		<div class="fixed top-20 right-6 z-50 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4">
 			<div class="flex items-start justify-between mb-3">
 				<h4 class="font-semibold text-gray-900 dark:text-white">Scan Complete</h4>

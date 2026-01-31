@@ -6,6 +6,7 @@ import { ValidationError, DuplicateEntryError, handleError } from '$lib/server/e
 import { getLogger } from '$lib/server/logging';
 import { scanLibrary } from '$lib/server/scanner/library-scanner';
 import type { Library } from '$lib/server/db';
+import { existsSync } from 'fs';
 
 const logger = getLogger('api:libraries');
 
@@ -13,6 +14,10 @@ export const GET = async () => {
 	try {
 		const db = getDatabase();
 		const libraries = db.prepare('SELECT * FROM library ORDER BY created_at DESC').all() as Library[];
+		
+		// Note: Path status checks are performed on-demand in other endpoints (scan, layout load)
+		// to avoid N+1 filesystem checks on every GET request. This endpoint returns cached status.
+		// If real-time status is needed, consider implementing a background job or websocket updates.
 		
 		return json({ libraries });
 	} catch (error) {
