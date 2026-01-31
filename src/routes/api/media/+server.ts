@@ -20,6 +20,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const pageSizeParam = url.searchParams.get('page_size') || '100';
 	const mediaTypeParam = url.searchParams.get('media_type');
 	const searchParam = url.searchParams.get('search');
+	const tagIdsParam = url.searchParams.get('tag_ids');
 
 	if (!libraryIdParam) {
 		error(400, 'library_id is required');
@@ -56,20 +57,56 @@ export const GET: RequestHandler = async ({ url }) => {
 		queryParams.push(searchTerm, folderPathLength, searchTerm);
 	}
 
+	// Tag filtering with indexed queries
+	let tagIds: number[] = [];
+	if (tagIdsParam && tagIdsParam.trim()) {
+		tagIds = tagIdsParam.split(',').map(id => sanitizeInteger(id.trim())).filter(id => id > 0);
+	}
+
 	const whereClause = whereConditions.join(' AND ');
 
-	const countStmt = db.prepare(`SELECT COUNT(*) as count FROM media WHERE ${whereClause}`);
-	const countResult = countStmt.get(...countParams) as { count: number };
-	const total = countResult.count;
+	let countStmt;
+	let mediaStmt;
+	let total: number;
+	let items: Media[];
 
-	queryParams.push(pageSize, offset);
-	const mediaStmt = db.prepare(`
-		SELECT * FROM media 
-		WHERE ${whereClause}
-		ORDER BY created_at DESC, id DESC
-		LIMIT ? OFFSET ?
-	`);
-	const items = mediaStmt.all(...queryParams) as Media[];
+	if (tagIds.length > 0) {
+		// Filter by tags using indexed media_tag table
+		// Use INTERSECT to ensure media has ALL specified tags (AND logic)
+		const tagFilterQuery = tagIds.map(() => `
+			SELECT media_id FROM media_tag WHERE tag_id = ?
+		`).join(' INTERSECT ');
+
+		countStmt = db.prepare(`
+			SELECT COUNT(*) as count FROM media 
+			WHERE ${whereClause} AND id IN (${tagFilterQuery})
+		`);
+		const countResult = countStmt.get(...countParams, ...tagIds) as { count: number };
+		total = countResult.count;
+
+		queryParams.push(...tagIds, pageSize, offset);
+		mediaStmt = db.prepare(`
+			SELECT * FROM media 
+			WHERE ${whereClause} AND id IN (${tagFilterQuery})
+			ORDER BY created_at DESC, id DESC
+			LIMIT ? OFFSET ?
+		`);
+		items = mediaStmt.all(...queryParams) as Media[];
+	} else {
+		// No tag filtering
+		countStmt = db.prepare(`SELECT COUNT(*) as count FROM media WHERE ${whereClause}`);
+		const countResult = countStmt.get(...countParams) as { count: number };
+		total = countResult.count;
+
+		queryParams.push(pageSize, offset);
+		mediaStmt = db.prepare(`
+			SELECT * FROM media 
+			WHERE ${whereClause}
+			ORDER BY created_at DESC, id DESC
+			LIMIT ? OFFSET ?
+		`);
+		items = mediaStmt.all(...queryParams) as Media[];
+	}
 
 	const totalPages = Math.ceil(total / pageSize);
 

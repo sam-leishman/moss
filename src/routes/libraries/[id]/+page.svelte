@@ -7,6 +7,7 @@
 	import MediaFilters from '$lib/components/MediaFilters.svelte';
 	import MediaDetailModal from '$lib/components/MediaDetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import BulkTaggingPanel from '$lib/components/BulkTaggingPanel.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -21,6 +22,10 @@
 	let mediaType = $state<MediaType | 'all'>('all');
 	let viewMode = $state<'grid' | 'list'>('grid');
 	let selectedMedia = $state<Media | null>(null);
+	let selectedTags = $state<number[]>([]);
+	let bulkSelectMode = $state(false);
+	let selectedMediaIds = $state<Set<number>>(new Set());
+	let showBulkTagPanel = $state(false);
 
 	const loadMedia = async () => {
 		isLoading = true;
@@ -39,6 +44,10 @@
 
 			if (searchQuery.trim()) {
 				params.append('search', searchQuery.trim());
+			}
+
+			if (selectedTags.length > 0) {
+				params.append('tag_ids', selectedTags.join(','));
 			}
 
 			const response = await fetch(`/api/media?${params}`);
@@ -72,6 +81,11 @@
 
 	const handleMediaTypeChange = (type: MediaType | 'all') => {
 		mediaType = type;
+		currentPage = 1;
+	};
+
+	const handleTagsChange = (tagIds: number[]) => {
+		selectedTags = tagIds;
 		currentPage = 1;
 	};
 
@@ -114,6 +128,76 @@
 		const current = selectedMedia;
 		return current ? mediaItems.findIndex(item => item.id === current.id) : -1;
 	});
+
+	const toggleBulkSelect = () => {
+		bulkSelectMode = !bulkSelectMode;
+		if (!bulkSelectMode) {
+			selectedMediaIds = new Set();
+			showBulkTagPanel = false;
+		}
+	};
+
+	const toggleMediaSelection = (mediaId: number) => {
+		const newSet = new Set(selectedMediaIds);
+		if (newSet.has(mediaId)) {
+			newSet.delete(mediaId);
+		} else {
+			newSet.add(mediaId);
+		}
+		selectedMediaIds = newSet;
+	};
+
+	const selectAll = () => {
+		selectedMediaIds = new Set(mediaItems.map(item => item.id));
+	};
+
+	const deselectAll = () => {
+		selectedMediaIds = new Set();
+	};
+
+	const bulkAddTags = async (tagIds: number[]) => {
+		if (selectedMediaIds.size === 0 || tagIds.length === 0) return;
+
+		const response = await fetch('/api/media/bulk-tag', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				media_ids: Array.from(selectedMediaIds),
+				tag_ids: tagIds,
+				operation: 'add'
+			})
+		});
+
+		if (!response.ok) {
+			throw new Error('Failed to add tags');
+		}
+
+		await loadMedia();
+		bulkSelectMode = false;
+		selectedMediaIds = new Set();
+	};
+
+	const bulkRemoveTags = async (tagIds: number[]) => {
+		if (selectedMediaIds.size === 0 || tagIds.length === 0) return;
+
+		const response = await fetch('/api/media/bulk-tag', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				media_ids: Array.from(selectedMediaIds),
+				tag_ids: tagIds,
+				operation: 'remove'
+			})
+		});
+
+		if (!response.ok) {
+			throw new Error('Failed to remove tags');
+		}
+
+		await loadMedia();
+		bulkSelectMode = false;
+		selectedMediaIds = new Set();
+	};
 </script>
 
 <div class="flex flex-col h-full">
@@ -121,9 +205,11 @@
 		{searchQuery}
 		{mediaType}
 		{viewMode}
+		{selectedTags}
 		onSearchChange={handleSearchChange}
 		onMediaTypeChange={handleMediaTypeChange}
 		onViewModeChange={handleViewModeChange}
+		onTagsChange={handleTagsChange}
 	/>
 
 	<div class="flex-1 overflow-y-auto p-6">
@@ -157,12 +243,78 @@
 		{:else}
 			<div class="space-y-6">
 				<div class="flex items-center justify-between">
-					<p class="text-sm text-gray-600">
-						Showing {mediaItems.length} of {totalItems} items
-					</p>
+					<div class="flex items-center gap-4">
+						<p class="text-sm text-gray-600">
+							Showing {mediaItems.length} of {totalItems} items
+						</p>
+						{#if bulkSelectMode}
+							<p class="text-sm font-medium text-blue-600">
+								{selectedMediaIds.size} selected
+							</p>
+						{/if}
+					</div>
+					<div class="flex items-center gap-2">
+						{#if bulkSelectMode && selectedMediaIds.size > 0}
+							<button
+								type="button"
+								onclick={() => showBulkTagPanel = true}
+								class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+							>
+								Tag Selected
+							</button>
+						{/if}
+						<button
+							type="button"
+							onclick={toggleBulkSelect}
+							class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors {bulkSelectMode ? 'bg-blue-50 border-blue-600 text-blue-600' : ''}"
+						>
+							{bulkSelectMode ? 'Cancel Selection' : 'Bulk Select'}
+						</button>
+						{#if bulkSelectMode}
+							<button
+								type="button"
+								onclick={selectAll}
+								class="px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 underline"
+							>
+								Select All
+							</button>
+							<button
+								type="button"
+								onclick={deselectAll}
+								class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 underline"
+							>
+								Deselect All
+							</button>
+						{/if}
+					</div>
 				</div>
 
-				{#if viewMode === 'grid'}
+				{#if bulkSelectMode}
+					<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+						{#each mediaItems as media (media.id)}
+							<div class="relative group">
+								<button
+									type="button"
+									onclick={() => toggleMediaSelection(media.id)}
+									class="w-full aspect-square rounded-lg overflow-hidden border-2 transition-all {selectedMediaIds.has(media.id) ? 'border-blue-600 ring-2 ring-blue-600' : 'border-transparent hover:border-gray-300'}"
+								>
+									<img
+										src="/api/media/{media.id}/thumbnail"
+										alt={media.title || media.path}
+										class="w-full h-full object-cover"
+									/>
+								</button>
+								{#if selectedMediaIds.has(media.id)}
+									<div class="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+										<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+											<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+										</svg>
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{:else if viewMode === 'grid'}
 					<MediaGrid items={mediaItems} onItemClick={handleMediaClick} />
 				{:else}
 					<MediaList items={mediaItems} onItemClick={handleMediaClick} />
@@ -190,3 +342,13 @@
 	onNext={handleNextMedia}
 	onPrevious={handlePreviousMedia}
 />
+
+{#if showBulkTagPanel}
+	<BulkTaggingPanel
+		selectedCount={selectedMediaIds.size}
+		selectedMediaIds={Array.from(selectedMediaIds)}
+		onAddTags={bulkAddTags}
+		onRemoveTags={bulkRemoveTags}
+		onClose={() => showBulkTagPanel = false}
+	/>
+{/if}
