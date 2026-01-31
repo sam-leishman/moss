@@ -4,9 +4,10 @@
 
 	interface Props {
 		mediaId: number;
+		libraryId: number;
 	}
 
-	let { mediaId }: Props = $props();
+	let { mediaId, libraryId }: Props = $props();
 
 	let credits = $state<Person[]>([]);
 	let allPeople = $state<Person[]>([]);
@@ -26,7 +27,7 @@
 
 	const loadPeople = async () => {
 		try {
-			const response = await fetch('/api/people');
+			const response = await fetch(`/api/people?library_id=${libraryId}`);
 			if (!response.ok) throw new Error('Failed to fetch people');
 			allPeople = await response.json();
 		} catch (err) {

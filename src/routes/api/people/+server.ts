@@ -12,17 +12,29 @@ export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const db = getDatabase();
 		const role = url.searchParams.get('role');
+		const libraryId = url.searchParams.get('library_id');
 		
 		let query = 'SELECT * FROM person';
-		const params: string[] = [];
+		const params: (string | number)[] = [];
+		const conditions: string[] = [];
 		
 		if (role) {
 			const sanitizedRole = sanitizePersonRole(role);
-			query += ' WHERE role = ?';
+			conditions.push('role = ?');
 			params.push(sanitizedRole);
 		}
 		
-		query += ' ORDER BY name ASC';
+		if (libraryId) {
+			// Get library-specific people and global people
+			conditions.push('(library_id = ? OR is_global = 1)');
+			params.push(parseInt(libraryId, 10));
+		}
+		
+		if (conditions.length > 0) {
+			query += ' WHERE ' + conditions.join(' AND ');
+		}
+		
+		query += ' ORDER BY is_global DESC, name ASC';
 		
 		const people = db.prepare(query).all(...params) as Person[];
 		
@@ -35,7 +47,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { name, role, profile } = await request.json();
+		const { name, role, profile, library_id, is_global } = await request.json();
 
 		if (!name) {
 			throw new ValidationError('Person name is required');
@@ -47,15 +59,27 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const sanitizedName = sanitizePersonName(name);
 		const sanitizedRole = sanitizePersonRole(role);
+		const isGlobal = is_global ? 1 : 0;
+		const libraryId = isGlobal ? null : library_id;
+
+		if (!isGlobal && !libraryId) {
+			throw new ValidationError('Library ID is required for library-specific people');
+		}
 
 		const db = getDatabase();
 		
-		const existing = db.prepare('SELECT id FROM person WHERE name = ?').get(sanitizedName);
+		// Check for duplicate: same name and library_id combination
+		const existing = db.prepare(
+			'SELECT id FROM person WHERE name = ? AND (library_id IS ? OR (library_id IS NULL AND ? IS NULL))'
+		).get(sanitizedName, libraryId, libraryId);
 		if (existing) {
-			throw new DuplicateEntryError('Person', 'name', sanitizedName);
+			const scope = isGlobal ? 'global' : 'this library';
+			throw new DuplicateEntryError('Person', 'name', `${sanitizedName} (already exists in ${scope})`);
 		}
 
-		const result = db.prepare('INSERT INTO person (name, role) VALUES (?, ?)').run(sanitizedName, sanitizedRole);
+		const result = db.prepare(
+			'INSERT INTO person (name, role, library_id, is_global) VALUES (?, ?, ?, ?)'
+		).run(sanitizedName, sanitizedRole, libraryId, isGlobal);
 		const personId = result.lastInsertRowid;
 
 		if (sanitizedRole === 'artist' && profile) {
@@ -80,7 +104,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const person = db.prepare('SELECT * FROM person WHERE id = ?').get(personId) as Person;
 
-		logger.info(`Person created: ${sanitizedName} (${sanitizedRole})`);
+		const scope = isGlobal ? 'global' : `library ${libraryId}`;
+		logger.info(`Person created: ${sanitizedName} (${sanitizedRole}, ${scope})`);
 		
 		return json({ person }, { status: 201 });
 	} catch (error) {

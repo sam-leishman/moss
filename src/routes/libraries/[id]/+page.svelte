@@ -185,6 +185,7 @@
 		{mediaType}
 		{viewMode}
 		{selectedTags}
+		libraryId={data.library.id}
 		onSearchChange={handleSearchChange}
 		onMediaTypeChange={handleMediaTypeChange}
 		onViewModeChange={handleViewModeChange}

@@ -24,6 +24,8 @@ export interface Media {
 export interface Tag {
 	id: number;
 	name: string;
+	library_id: number | null;
+	is_global: number;
 	created_at: string;
 }
 
@@ -37,6 +39,8 @@ export interface Person {
 	id: number;
 	name: string;
 	role: 'artist' | 'performer';
+	library_id: number | null;
+	is_global: number;
 	created_at: string;
 	updated_at: string;
 }

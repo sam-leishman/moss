@@ -375,10 +375,10 @@
 						onUpdate={refreshMediaData}
 					/>
 					<div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-						<TagSelector mediaId={media.id} />
+						<TagSelector mediaId={media.id} libraryId={media.library_id} />
 					</div>
 					<div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-						<CreditSelector mediaId={media.id} />
+						<CreditSelector mediaId={media.id} libraryId={media.library_id} />
 					</div>
 				</div>
 			</div>

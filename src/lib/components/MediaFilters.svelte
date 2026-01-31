@@ -9,6 +9,7 @@
 		mediaType: MediaType | 'all';
 		viewMode: 'grid' | 'list';
 		selectedTags: number[];
+		libraryId: number;
 		onSearchChange: (query: string) => void;
 		onMediaTypeChange: (type: MediaType | 'all') => void;
 		onViewModeChange: (mode: 'grid' | 'list') => void;
@@ -20,6 +21,7 @@
 		mediaType, 
 		viewMode,
 		selectedTags,
+		libraryId,
 		onSearchChange, 
 		onMediaTypeChange, 
 		onViewModeChange,
@@ -33,7 +35,7 @@
 	const loadTags = async () => {
 		tagsLoading = true;
 		try {
-			const response = await fetch('/api/tags');
+			const response = await fetch(`/api/tags?library_id=${libraryId}`);
 			if (response.ok) {
 				allTags = await response.json();
 			}

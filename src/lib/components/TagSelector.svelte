@@ -4,9 +4,10 @@
 
 	interface Props {
 		mediaId: number;
+		libraryId: number;
 	}
 
-	let { mediaId }: Props = $props();
+	let { mediaId, libraryId }: Props = $props();
 
 	let allTags = $state<Tag[]>([]);
 	let assignedTags = $state<Tag[]>([]);
@@ -21,7 +22,7 @@
 		error = null;
 		try {
 			const [allResponse, assignedResponse] = await Promise.all([
-				fetch('/api/tags'),
+				fetch(`/api/tags?library_id=${libraryId}`),
 				fetch(`/api/media/${mediaId}/tags`)
 			]);
 

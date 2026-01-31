@@ -78,6 +78,134 @@ export const migrations: Migration[] = [
 			db.exec('ALTER TABLE library_backup RENAME TO library');
 			db.exec('DELETE FROM schema_version WHERE version = 3');
 		}
+	},
+	{
+		version: 4,
+		up: (db: Database.Database) => {
+			// Disable foreign keys temporarily for safe table recreation
+			db.pragma('foreign_keys = OFF');
+			
+			try {
+				// Migrate tag table: add library_id and is_global columns
+				// Step 1: Create new tag table with updated schema
+				db.exec(`
+					CREATE TABLE tag_new (
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						name TEXT NOT NULL CHECK(length(name) <= 50),
+						library_id INTEGER,
+						is_global INTEGER NOT NULL DEFAULT 0 CHECK(is_global IN (0, 1)),
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						FOREIGN KEY (library_id) REFERENCES library(id) ON DELETE CASCADE,
+						UNIQUE(name, library_id),
+						CHECK((is_global = 1 AND library_id IS NULL) OR (is_global = 0 AND library_id IS NOT NULL))
+					)
+				`);
+				
+				// Step 2: Migrate existing tags as global (is_global=1, library_id=NULL)
+				db.exec(`
+					INSERT INTO tag_new (id, name, library_id, is_global, created_at)
+					SELECT id, name, NULL, 1, created_at FROM tag
+				`);
+				
+				// Step 3: Drop old table and rename new table
+				db.exec('DROP TABLE tag');
+				db.exec('ALTER TABLE tag_new RENAME TO tag');
+				
+				// Step 4: Recreate tag indexes
+				db.exec(`
+					CREATE INDEX IF NOT EXISTS idx_tag_name ON tag(name);
+					CREATE INDEX IF NOT EXISTS idx_tag_library_id ON tag(library_id);
+					CREATE INDEX IF NOT EXISTS idx_tag_is_global ON tag(is_global);
+				`);
+				
+				// Migrate person table: add library_id and is_global columns
+				// Step 1: Create new person table with updated schema
+				db.exec(`
+					CREATE TABLE person_new (
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						name TEXT NOT NULL,
+						role TEXT NOT NULL CHECK(role IN ('artist', 'performer')),
+						library_id INTEGER,
+						is_global INTEGER NOT NULL DEFAULT 0 CHECK(is_global IN (0, 1)),
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+						FOREIGN KEY (library_id) REFERENCES library(id) ON DELETE CASCADE,
+						UNIQUE(name, library_id),
+						CHECK((is_global = 1 AND library_id IS NULL) OR (is_global = 0 AND library_id IS NOT NULL))
+					)
+				`);
+				
+				// Step 2: Migrate existing people as global (is_global=1, library_id=NULL)
+				db.exec(`
+					INSERT INTO person_new (id, name, role, library_id, is_global, created_at, updated_at)
+					SELECT id, name, role, NULL, 1, created_at, updated_at FROM person
+				`);
+				
+				// Step 3: Drop old table and rename new table
+				db.exec('DROP TABLE person');
+				db.exec('ALTER TABLE person_new RENAME TO person');
+				
+				// Step 4: Recreate person indexes
+				db.exec(`
+					CREATE INDEX IF NOT EXISTS idx_person_name ON person(name);
+					CREATE INDEX IF NOT EXISTS idx_person_role ON person(role);
+					CREATE INDEX IF NOT EXISTS idx_person_library_id ON person(library_id);
+					CREATE INDEX IF NOT EXISTS idx_person_is_global ON person(is_global);
+				`);
+				
+				const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
+				stmt.run(4);
+			} finally {
+				// Re-enable foreign keys
+				db.pragma('foreign_keys = ON');
+			}
+		},
+		down: (db: Database.Database) => {
+			// Rollback: recreate old tag table structure
+			db.exec(`
+				CREATE TABLE tag_old (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					name TEXT NOT NULL UNIQUE CHECK(length(name) <= 50),
+					created_at TEXT NOT NULL DEFAULT (datetime('now'))
+				)
+			`);
+			
+			// Copy only global tags back
+			db.exec(`
+				INSERT INTO tag_old (id, name, created_at)
+				SELECT id, name, created_at FROM tag WHERE is_global = 1
+			`);
+			
+			db.exec('DROP TABLE tag');
+			db.exec('ALTER TABLE tag_old RENAME TO tag');
+			db.exec('CREATE INDEX IF NOT EXISTS idx_tag_name ON tag(name)');
+			
+			// Rollback: recreate old person table structure
+			db.exec(`
+				CREATE TABLE person_old (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					name TEXT NOT NULL UNIQUE,
+					role TEXT NOT NULL CHECK(role IN ('artist', 'performer')),
+					created_at TEXT NOT NULL DEFAULT (datetime('now')),
+					updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+				)
+			`);
+			
+			// Copy only global people back
+			db.exec(`
+				INSERT INTO person_old (id, name, role, created_at, updated_at)
+				SELECT id, name, role, created_at, updated_at FROM person WHERE is_global = 1
+			`);
+			
+			db.exec('DROP TABLE person');
+			db.exec('ALTER TABLE person_old RENAME TO person');
+			db.exec(`
+				CREATE INDEX IF NOT EXISTS idx_person_name ON person(name);
+				CREATE INDEX IF NOT EXISTS idx_person_role ON person(role);
+			`);
+			
+			db.exec('DELETE FROM schema_version WHERE version = 4');
+		}
 	}
 ];
 
