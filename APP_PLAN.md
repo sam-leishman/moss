@@ -130,13 +130,13 @@ The application supports detailed credit attribution for media items:
 - [x] Bulk tagging operations with transaction safety
 
 ### Phase 5: Credit System
-- [ ] Person management (create, edit, delete) with uniqueness validation
-- [ ] Credit assignment to media items with duplicate prevention
-- [ ] Credit display on media items
-- [ ] Person profile pages
-- [ ] Artist style classification
-- [ ] Role-specific profile management
-- [ ] Cascade delete handling for person removal
+- [x] Person management (create, edit, delete) with uniqueness validation
+- [x] Credit assignment to media items with duplicate prevention
+- [x] Credit display on media items
+- [x] Person profile pages
+- [x] Artist style classification
+- [x] Role-specific profile management
+- [x] Cascade delete handling for person removal
 
 ### Phase 6: Advanced Features
 - [ ] Advanced search and filtering with combined criteria

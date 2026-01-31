@@ -1,7 +1,8 @@
 <script lang="ts">
-	import type { Media } from '$lib/server/db';
+	import type { Media, Person } from '$lib/server/db';
 	import { basename } from '$lib/utils/path';
 	import TagSelector from './TagSelector.svelte';
+	import CreditSelector from './CreditSelector.svelte';
 	import { X, Info, Pencil, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
 	interface Props {
@@ -16,6 +17,7 @@
 	let { media, onClose, currentIndex, totalItems, onNext, onPrevious }: Props = $props();
 	let showInfo = $state(false);
 	let showEdit = $state(false);
+	let credits = $state<Person[]>([]);
 
 	const handleBackdropClick = () => {
 		if (showInfo) {
@@ -56,9 +58,24 @@
 		}
 	};
 
-	const toggleInfo = () => {
+	const toggleInfo = async () => {
 		if (showEdit) showEdit = false;
 		showInfo = !showInfo;
+		if (showInfo && media) {
+			await loadCredits();
+		}
+	};
+
+	const loadCredits = async () => {
+		if (!media) return;
+		try {
+			const response = await fetch(`/api/media/${media.id}/credits`);
+			if (response.ok) {
+				credits = await response.json();
+			}
+		} catch (err) {
+			console.error('Failed to load credits', err);
+		}
 	};
 
 	const toggleEdit = () => {
@@ -224,6 +241,24 @@
 						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">File Path</h4>
 						<p class="text-gray-700 text-xs break-all font-mono bg-gray-50 p-2 rounded">{media.path}</p>
 					</div>
+
+					{#if credits.length > 0}
+						<div>
+							<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Credits</h4>
+							<div class="space-y-2">
+								{#each credits as person (person.id)}
+									<a
+										href="/libraries/{media.library_id}/people/{person.id}"
+										class="block p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+										onclick={(e) => e.stopPropagation()}
+									>
+										<p class="text-sm font-medium text-gray-900">{person.name}</p>
+										<p class="text-xs text-gray-500 capitalize">{person.role}</p>
+									</a>
+								{/each}
+							</div>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -248,8 +283,11 @@
 					</button>
 				</div>
 
-				<div class="flex-1 overflow-y-auto p-4">
+				<div class="flex-1 overflow-y-auto p-4 space-y-6">
 					<TagSelector mediaId={media.id} />
+					<div class="border-t border-gray-200 pt-4">
+						<CreditSelector mediaId={media.id} />
+					</div>
 				</div>
 			</div>
 		</div>

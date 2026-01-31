@@ -23,7 +23,7 @@
 			<div class="flex gap-6">
 				<a
 					href="/libraries/{data.library.id}"
-					class="px-1 py-4 text-sm font-medium border-b-2 transition-colors {isActive(`/libraries/${data.library.id}`) && !$page.url.pathname.includes('/tags') ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}"
+					class="px-1 py-4 text-sm font-medium border-b-2 transition-colors {isActive(`/libraries/${data.library.id}`) && !$page.url.pathname.includes('/tags') && !$page.url.pathname.includes('/people') ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}"
 				>
 					Media
 				</a>
@@ -32,6 +32,12 @@
 					class="px-1 py-4 text-sm font-medium border-b-2 transition-colors {isActive(`/libraries/${data.library.id}/tags`) ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}"
 				>
 					Tags
+				</a>
+				<a
+					href="/libraries/{data.library.id}/people"
+					class="px-1 py-4 text-sm font-medium border-b-2 transition-colors {isActive(`/libraries/${data.library.id}/people`) ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}"
+				>
+					People
 				</a>
 			</div>
 		</div>

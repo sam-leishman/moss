@@ -7,7 +7,7 @@
 	import MediaFilters from '$lib/components/MediaFilters.svelte';
 	import MediaDetailModal from '$lib/components/MediaDetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
-	import BulkTaggingPanel from '$lib/components/BulkTaggingPanel.svelte';
+	import BulkEditingPanel from '$lib/components/BulkEditingPanel.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -25,7 +25,7 @@
 	let selectedTags = $state<number[]>([]);
 	let bulkSelectMode = $state(false);
 	let selectedMediaIds = $state<Set<number>>(new Set());
-	let showBulkTagPanel = $state(false);
+	let showBulkEditPanel = $state(false);
 
 	const loadMedia = async () => {
 		isLoading = true;
@@ -133,7 +133,7 @@
 		bulkSelectMode = !bulkSelectMode;
 		if (!bulkSelectMode) {
 			selectedMediaIds = new Set();
-			showBulkTagPanel = false;
+			showBulkEditPanel = false;
 		}
 	};
 
@@ -155,46 +155,12 @@
 		selectedMediaIds = new Set();
 	};
 
-	const bulkAddTags = async (tagIds: number[]) => {
-		if (selectedMediaIds.size === 0 || tagIds.length === 0) return;
-
-		const response = await fetch('/api/media/bulk-tag', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				media_ids: Array.from(selectedMediaIds),
-				tag_ids: tagIds,
-				operation: 'add'
-			})
-		});
-
-		if (!response.ok) {
-			throw new Error('Failed to add tags');
-		}
-
+	const handleBulkEditComplete = async () => {
 		await loadMedia();
-		bulkSelectMode = false;
-		selectedMediaIds = new Set();
 	};
 
-	const bulkRemoveTags = async (tagIds: number[]) => {
-		if (selectedMediaIds.size === 0 || tagIds.length === 0) return;
-
-		const response = await fetch('/api/media/bulk-tag', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				media_ids: Array.from(selectedMediaIds),
-				tag_ids: tagIds,
-				operation: 'remove'
-			})
-		});
-
-		if (!response.ok) {
-			throw new Error('Failed to remove tags');
-		}
-
-		await loadMedia();
+	const handleBulkEditClose = () => {
+		showBulkEditPanel = false;
 		bulkSelectMode = false;
 		selectedMediaIds = new Set();
 	};
@@ -257,10 +223,10 @@
 						{#if bulkSelectMode && selectedMediaIds.size > 0}
 							<button
 								type="button"
-								onclick={() => showBulkTagPanel = true}
+								onclick={() => showBulkEditPanel = true}
 								class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
 							>
-								Tag Selected
+								Edit Selected
 							</button>
 						{/if}
 						<button
@@ -343,12 +309,11 @@
 	onPrevious={handlePreviousMedia}
 />
 
-{#if showBulkTagPanel}
-	<BulkTaggingPanel
+{#if showBulkEditPanel}
+	<BulkEditingPanel
 		selectedCount={selectedMediaIds.size}
 		selectedMediaIds={Array.from(selectedMediaIds)}
-		onAddTags={bulkAddTags}
-		onRemoveTags={bulkRemoveTags}
-		onClose={() => showBulkTagPanel = false}
+		onComplete={handleBulkEditComplete}
+		onClose={handleBulkEditClose}
 	/>
 {/if}

@@ -5,7 +5,7 @@ import { ValidationError } from '$lib/server/errors/app-errors';
 import { getLogger } from '$lib/server/logging';
 import type { RequestHandler } from './$types';
 
-const logger = getLogger('api:media:tags-for-items');
+const logger = getLogger('api:media:properties-for-items');
 
 export const POST: RequestHandler = async ({ request }) => {
 	const db = getDatabase();
@@ -26,8 +26,9 @@ export const POST: RequestHandler = async ({ request }) => {
 	const sanitizedMediaIds = media_ids.map(id => sanitizeInteger(id));
 
 	try {
-		// Get all tags with count of how many selected items have each tag
 		const placeholders = sanitizedMediaIds.map(() => '?').join(',');
+		const totalSelected = sanitizedMediaIds.length;
+
 		const tagCounts = db.prepare(`
 			SELECT 
 				t.id,
@@ -39,9 +40,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			ORDER BY t.name ASC
 		`).all(...sanitizedMediaIds) as Array<{ id: number; name: string; count: number }>;
 
-		const totalSelected = sanitizedMediaIds.length;
-
-		// Map to include application state
 		const tagsWithState = tagCounts.map(tag => ({
 			id: tag.id,
 			name: tag.name,
@@ -50,11 +48,35 @@ export const POST: RequestHandler = async ({ request }) => {
 			state: tag.count === 0 ? 'none' : tag.count === totalSelected ? 'all' : 'some'
 		}));
 
-		logger.info(`Fetched tag states for ${sanitizedMediaIds.length} media items`);
+		const personCounts = db.prepare(`
+			SELECT 
+				p.id,
+				p.name,
+				p.role,
+				COUNT(DISTINCT mc.media_id) as count
+			FROM person p
+			LEFT JOIN media_credit mc ON mc.person_id = p.id AND mc.media_id IN (${placeholders})
+			GROUP BY p.id, p.name, p.role
+			ORDER BY p.name ASC
+		`).all(...sanitizedMediaIds) as Array<{ id: number; name: string; role: string; count: number }>;
 
-		return json(tagsWithState);
+		const creditsWithState = personCounts.map(person => ({
+			id: person.id,
+			name: person.name,
+			role: person.role,
+			appliedCount: person.count,
+			totalCount: totalSelected,
+			state: person.count === 0 ? 'none' : person.count === totalSelected ? 'all' : 'some'
+		}));
+
+		logger.info(`Fetched property states for ${sanitizedMediaIds.length} media items`);
+
+		return json({
+			tags: tagsWithState,
+			credits: creditsWithState
+		});
 	} catch (err) {
-		logger.error('Failed to fetch tags for items', err instanceof Error ? err : new Error(String(err)));
-		error(500, 'Failed to fetch tags for items');
+		logger.error('Failed to fetch properties for items', err instanceof Error ? err : new Error(String(err)));
+		error(500, 'Failed to fetch properties for items');
 	}
 };
