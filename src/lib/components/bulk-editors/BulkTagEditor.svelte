@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Tag as TagIcon } from 'lucide-svelte';
+	import { Tag as TagIcon, Check, Circle } from 'lucide-svelte';
 
 	interface TagWithState {
 		id: number;
@@ -38,18 +38,16 @@
 
 	const getTagButtonClass = (tag: TagWithState) => {
 		if (tag.state === 'all') {
-			return 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100';
+			return 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30';
 		}
 		if (tag.state === 'some') {
-			return 'border-green-300 bg-green-50/50 text-green-600/70 hover:bg-green-100/70';
+			return 'border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-900/10 text-green-600/70 dark:text-green-400/70 hover:bg-green-100/70 dark:hover:bg-green-900/20';
 		}
-		return 'border-gray-300 text-gray-700 hover:bg-gray-50';
+		return 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700';
 	};
 
 	const getTagIcon = (tag: TagWithState) => {
-		if (tag.state === 'all') return '✓';
-		if (tag.state === 'some') return '◐';
-		return '';
+		return tag.state;
 	};
 
 	const getTagTitle = (tag: TagWithState) => {
@@ -64,22 +62,22 @@
 </script>
 
 <div class="p-4 space-y-4">
-	<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-		<p class="text-sm text-blue-800">
+	<div class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+		<p class="text-sm text-blue-800 dark:text-blue-200">
 			Click tags to add them to all selected items. Click again to remove from all items.
 		</p>
 	</div>
 
 	{#if error}
-		<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+		<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-800 dark:text-red-200">
 			{error}
 		</div>
 	{/if}
 
 	<div>
 		<div class="flex items-center justify-between mb-3">
-			<h4 class="text-sm font-medium text-gray-700">Tags</h4>
-			<div class="flex items-center gap-3 text-xs text-gray-500">
+			<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Tags</h4>
+			<div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
 				<div class="flex items-center gap-1">
 					<span class="w-3 h-3 rounded border-2 border-green-500 bg-green-50"></span>
 					<span>All</span>
@@ -91,7 +89,7 @@
 			</div>
 		</div>
 		{#if tags.length === 0}
-			<p class="text-sm text-gray-500 text-center py-8">No tags available. Create tags first.</p>
+			<p class="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No tags available. Create tags first.</p>
 		{:else}
 			<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
 				{#each tags as tag (tag.id)}
@@ -102,8 +100,10 @@
 						class="flex items-center gap-2 px-3 py-2 text-sm rounded-lg border-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed {getTagButtonClass(tag)}"
 						title={getTagTitle(tag)}
 					>
-						{#if getTagIcon(tag)}
-							<span class="text-xs font-bold">{getTagIcon(tag)}</span>
+						{#if tag.state === 'all'}
+							<Check class="w-3 h-3" />
+						{:else if tag.state === 'some'}
+							<Circle class="w-3 h-3 fill-current opacity-50" />
 						{:else}
 							<TagIcon class="w-3 h-3" />
 						{/if}

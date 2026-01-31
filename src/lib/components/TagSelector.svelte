@@ -108,25 +108,25 @@
 
 <div class="space-y-3">
 	<div class="flex items-center justify-between">
-		<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide">Tags</h4>
+		<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tags</h4>
 		{#if !loading && allTags.length > 0}
 			<div class="relative tag-selector-dropdown">
 				<button
 					type="button"
 					onclick={() => showDropdown = !showDropdown}
-					class="text-xs text-blue-600 hover:text-blue-800 font-medium"
+					class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
 				>
 					+ Add Tag
 				</button>
 				
 				{#if showDropdown && availableTags.length > 0}
-					<div class="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10 max-h-60 overflow-y-auto">
+					<div class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-10 max-h-60 overflow-y-auto">
 						{#each availableTags as tag (tag.id)}
 							<button
 								type="button"
 								onclick={() => assignTag(tag.id)}
 								disabled={assigning === tag.id}
-								class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:bg-gray-50 disabled:text-gray-400 transition-colors"
+								class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-600 transition-colors"
 							>
 								{#if assigning === tag.id}
 									<span class="flex items-center gap-2">
@@ -140,7 +140,7 @@
 						{/each}
 					</div>
 				{:else if showDropdown && availableTags.length === 0}
-					<div class="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10 p-3 text-sm text-gray-500 text-center">
+					<div class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-10 p-3 text-sm text-gray-500 dark:text-gray-400 text-center">
 						All tags assigned
 					</div>
 				{/if}
@@ -149,29 +149,29 @@
 	</div>
 
 	{#if error}
-		<div class="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+		<div class="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-800 dark:text-red-200">
 			{error}
 		</div>
 	{/if}
 
 	{#if loading}
-		<div class="flex items-center gap-2 text-sm text-gray-500">
+		<div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
 			<Loader2 class="w-4 h-4 animate-spin" />
 			Loading tags...
 		</div>
 	{:else if assignedTags.length === 0}
-		<p class="text-sm text-gray-500">No tags assigned</p>
+		<p class="text-sm text-gray-500 dark:text-gray-400">No tags assigned</p>
 	{:else}
 		<div class="flex flex-wrap gap-2">
 			{#each assignedTags as tag (tag.id)}
-				<div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+				<div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-sm">
 					<TagIcon class="w-3 h-3" />
 					<span>{tag.name}</span>
 					<button
 						type="button"
 						onclick={() => removeTag(tag.id)}
 						disabled={removing === tag.id}
-						class="ml-1 text-blue-600 hover:text-blue-900 disabled:text-blue-400 transition-colors"
+						class="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-200 disabled:text-blue-400 dark:disabled:text-blue-600 transition-colors"
 						aria-label="Remove tag"
 					>
 						{#if removing === tag.id}
@@ -186,6 +186,6 @@
 	{/if}
 
 	{#if !loading && allTags.length === 0}
-		<p class="text-sm text-gray-500">No tags available. Create tags first in the tag management section.</p>
+		<p class="text-sm text-gray-500 dark:text-gray-400">No tags available. Create tags first in the tag management section.</p>
 	{/if}
 </div>

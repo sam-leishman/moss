@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import FolderBrowser from './FolderBrowser.svelte';
 	import type { Library } from '$lib/server/db';
-	import { Trash2 } from 'lucide-svelte';
+	import { Trash2, X } from 'lucide-svelte';
 
 	interface Props {
 		onLibraryChange?: (library: Library | null) => void;
@@ -163,35 +163,35 @@
 	}
 </script>
 
-<div class="p-4 bg-white rounded-lg shadow-sm">
+<div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
 	{#if error}
-		<div class="flex items-center justify-between px-4 py-3 mb-4 text-red-800 bg-red-100 border border-red-200 rounded-md">
+		<div class="flex items-center justify-between px-4 py-3 mb-4 text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
 			<span>{error}</span>
-			<button onclick={() => error = null} class="flex items-center justify-center w-8 h-8 text-2xl text-gray-500 transition-colors hover:text-gray-900">
-				×
+			<button onclick={() => error = null} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+				<X class="w-5 h-5" />
 			</button>
 		</div>
 	{/if}
 	
 	{#if successMessage}
-		<div class="flex items-center justify-between px-4 py-3 mb-4 text-green-800 bg-green-100 border border-green-200 rounded-md">
+		<div class="flex items-center justify-between px-4 py-3 mb-4 text-green-800 dark:text-green-200 bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
 			<span>{successMessage}</span>
-			<button onclick={() => successMessage = null} class="flex items-center justify-center w-8 h-8 text-2xl text-gray-500 transition-colors hover:text-gray-900">
-				×
+			<button onclick={() => successMessage = null} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+				<X class="w-5 h-5" />
 			</button>
 		</div>
 	{/if}
 
 	<div class="flex items-center justify-end mb-4">
-		<button onclick={openCreateModal} class="px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-500 rounded-md hover:bg-blue-600">
+		<button onclick={openCreateModal} class="px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700">
 			+ New Library
 		</button>
 	</div>
 
 	{#if loading && libraries.length === 0}
-		<div class="py-8 text-center text-gray-500">Loading libraries...</div>
+		<div class="py-8 text-center text-gray-500 dark:text-gray-400">Loading libraries...</div>
 	{:else if libraries.length === 0}
-		<div class="py-8 text-center text-gray-500">
+		<div class="py-8 text-center text-gray-500 dark:text-gray-400">
 			<p>No libraries yet. Create one to get started.</p>
 		</div>
 	{:else}
@@ -203,8 +203,8 @@
 						class="flex-1 p-2 text-left bg-transparent border-none cursor-pointer"
 					>
 						<div class="flex flex-col gap-1">
-							<span class="font-semibold text-gray-900">{library.name}</span>
-							<span class="text-sm text-gray-600 font-mono">{getDisplayPath(library.folder_path)}</span>
+							<span class="font-semibold text-gray-900 dark:text-white">{library.name}</span>
+							<span class="text-sm text-gray-600 dark:text-gray-400 font-mono">{getDisplayPath(library.folder_path)}</span>
 						</div>
 					</button>
 					<button 
@@ -230,39 +230,39 @@
 		aria-labelledby="create-library-title"
 		tabindex="-1"
 	>
-		<div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
-			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-				<h3 id="create-library-title" class="text-lg font-semibold">Create New Library</h3>
-				<button onclick={closeCreateModal} class="flex items-center justify-center w-8 h-8 text-2xl text-gray-500 transition-colors hover:text-gray-900">
-					×
+		<div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<h3 id="create-library-title" class="text-lg font-semibold text-gray-900 dark:text-white">Create New Library</h3>
+				<button onclick={closeCreateModal} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-6 h-6" />
 				</button>
 			</div>
 			
 			<div class="p-6">
 				<div class="mb-4">
-					<label for="library-name" class="block mb-2 text-sm font-medium text-gray-700">Library Name</label>
+					<label for="library-name" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Library Name</label>
 					<input
 						id="library-name"
 						type="text"
 						bind:value={newLibraryName}
 						placeholder="My Media Library"
-						class="block w-full rounded-md text-sm focus:border-blue-500 focus:ring-blue-500"
+						class="block w-full rounded-md text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
 					/>
 				</div>
 
 				<div class="mb-4">
-					<label for="library-path" class="block mb-2 text-sm font-medium text-gray-700">Folder Path</label>
+					<label for="library-path" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Folder Path</label>
 					<div class="flex gap-2">
 						<input
 							id="library-path"
 							type="text"
 							bind:value={newLibraryPath}
 							placeholder="/media/photos"
-							class="block flex-1 rounded-md text-sm focus:border-blue-500 focus:ring-blue-500"
+							class="block flex-1 rounded-md text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
 						/>
 						<button 
 							onclick={() => showFolderBrowserModal = true}
-							class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 hover:border-gray-400"
+							class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
 						>
 							Browse
 						</button>
@@ -270,13 +270,13 @@
 				</div>
 			</div>
 
-			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
-				<button onclick={closeCreateModal} class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-200 rounded-md hover:bg-gray-300">
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+				<button onclick={closeCreateModal} class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">
 					Cancel
 				</button>
 				<button 
 					onclick={createLibrary} 
-					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-500 rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
 					disabled={loading || !newLibraryName.trim() || !newLibraryPath.trim()}
 				>
 					{loading ? 'Creating...' : 'Create Library'}
@@ -296,26 +296,26 @@
 		aria-labelledby="delete-library-title"
 		tabindex="-1"
 	>
-		<div class="w-full max-w-md bg-white rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
-			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-				<h3 id="delete-library-title" class="text-lg font-semibold">Delete Library</h3>
-				<button onclick={cancelDelete} class="flex items-center justify-center w-8 h-8 text-2xl text-gray-500 transition-colors hover:text-gray-900">
-					×
+		<div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<h3 id="delete-library-title" class="text-lg font-semibold text-gray-900 dark:text-white">Delete Library</h3>
+				<button onclick={cancelDelete} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-6 h-6" />
 				</button>
 			</div>
 			
 			<div class="p-6">
-				<p>Are you sure you want to delete <strong>{libraryToDelete.name}</strong>?</p>
-				<p class="mt-2 text-sm text-gray-600">This will remove all media records from this library. The actual files will not be deleted.</p>
+				<p class="text-gray-900 dark:text-white">Are you sure you want to delete <strong>{libraryToDelete.name}</strong>?</p>
+				<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">This will remove all media records from this library. The actual files will not be deleted.</p>
 			</div>
 
-			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
-				<button onclick={cancelDelete} class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-200 rounded-md hover:bg-gray-300">
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+				<button onclick={cancelDelete} class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">
 					Cancel
 				</button>
 				<button 
 					onclick={deleteLibrary} 
-					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-red-500 rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
 					disabled={loading}
 				>
 					{loading ? 'Deleting...' : 'Delete Library'}
@@ -335,11 +335,11 @@
 		aria-labelledby="folder-browser-title"
 		tabindex="-1"
 	>
-		<div class="w-full max-w-2xl bg-white rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
-			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-				<h3 id="folder-browser-title" class="text-lg font-semibold">Select Folder</h3>
-				<button onclick={() => showFolderBrowserModal = false} class="flex items-center justify-center w-8 h-8 text-2xl text-gray-500 transition-colors hover:text-gray-900">
-					×
+		<div class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<h3 id="folder-browser-title" class="text-lg font-semibold text-gray-900 dark:text-white">Select Folder</h3>
+				<button onclick={() => showFolderBrowserModal = false} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-6 h-6" />
 				</button>
 			</div>
 			
@@ -347,10 +347,10 @@
 				<FolderBrowser onSelect={handleFolderSelect} />
 			</div>
 
-			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
 				<button 
 					onclick={() => showFolderBrowserModal = false} 
-					class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 hover:border-gray-400"
+					class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
 				>
 					Cancel
 				</button>
@@ -360,7 +360,6 @@
 {/if}
 
 <style>
-	/* Only keep truly custom component-specific styles */
 	.library-item {
 		display: flex;
 		align-items: center;
@@ -374,5 +373,15 @@
 	.library-item:hover {
 		border-color: #3b82f6;
 		background: #eff6ff;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:global(.dark) .library-item {
+			border-color: #374151;
+		}
+
+		:global(.dark) .library-item:hover {
+			background: rgba(30, 58, 138, 0.125);
+		}
 	}
 </style>

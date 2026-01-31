@@ -93,10 +93,10 @@
 
 <div class="space-y-4">
 	<div>
-		<h4 class="text-sm font-medium text-gray-700 mb-2">Credits</h4>
+		<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Credits</h4>
 		
 		{#if error}
-			<div class="p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm mb-2">
+			<div class="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-700 dark:text-red-200 text-sm mb-2">
 				{error}
 			</div>
 		{/if}
@@ -104,16 +104,16 @@
 		{#if credits.length > 0}
 			<div class="space-y-2 mb-3">
 				{#each credits as person (person.id)}
-					<div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+					<div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
 						<div>
-							<p class="text-sm font-medium text-gray-900">{person.name}</p>
-							<p class="text-xs text-gray-500 capitalize">{person.role}</p>
+							<p class="text-sm font-medium text-gray-900 dark:text-white">{person.name}</p>
+							<p class="text-xs text-gray-500 dark:text-gray-400 capitalize">{person.role}</p>
 						</div>
 						<button
 							type="button"
 							onclick={() => removeCredit(person.id)}
 							disabled={loading}
-							class="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+							class="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
 							aria-label="Remove credit"
 						>
 							<X class="w-4 h-4" />
@@ -122,13 +122,13 @@
 				{/each}
 			</div>
 		{:else}
-			<p class="text-sm text-gray-500 mb-3">No credits assigned</p>
+			<p class="text-sm text-gray-500 dark:text-gray-400 mb-3">No credits assigned</p>
 		{/if}
 
 		<div class="flex gap-2">
 			<select
 				bind:value={selectedPersonId}
-				class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 			>
 				<option value={null}>Select person...</option>
 				{#each availablePeople as person (person.id)}

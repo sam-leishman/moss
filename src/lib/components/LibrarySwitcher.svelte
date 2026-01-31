@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import FolderBrowser from './FolderBrowser.svelte';
 	import type { Library } from '$lib/server/db';
-	import { Library as LibraryIcon } from 'lucide-svelte';
+	import { Library as LibraryIcon, ChevronDown, Check, RefreshCw, Plus, X } from 'lucide-svelte';
 
 	interface Props {
 		currentLibrary?: Library;
@@ -171,60 +171,50 @@
 <div class="library-switcher relative">
 	<button
 		onclick={() => showDropdown = !showDropdown}
-		class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+		class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
 	>
 		<LibraryIcon class="w-5 h-5" />
 		<span>{currentLibrary?.name || 'Select Library'}</span>
-		<svg class="w-4 h-4 transition-transform" class:rotate-180={showDropdown} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-		</svg>
+		<ChevronDown class="w-4 h-4 transition-transform {showDropdown ? 'rotate-180' : ''}" />
 	</button>
 
 	{#if showDropdown}
-		<div class="absolute right-0 z-50 w-64 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg">
+		<div class="absolute right-0 z-50 w-64 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
 			<div class="py-1">
 				{#if libraries.length === 0}
-					<div class="px-4 py-3 text-sm text-gray-500">No libraries yet</div>
+					<div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">No libraries yet</div>
 				{:else}
 					{#each libraries as library (library.id)}
 						<button
 							onclick={() => selectLibrary(library)}
-							class="flex items-center w-full gap-2 px-4 py-2 text-sm text-left transition-colors hover:bg-gray-50"
-							class:bg-blue-50={currentLibrary?.id === library.id}
-							class:text-blue-600={currentLibrary?.id === library.id}
+							class={`flex items-center w-full gap-2 px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${currentLibrary?.id === library.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : ''}`}
 						>
 							<span class="flex-1 truncate">{library.name}</span>
 							{#if currentLibrary?.id === library.id}
-								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-								</svg>
+								<Check class="w-4 h-4" />
 							{/if}
 						</button>
 					{/each}
 				{/if}
 			</div>
 			{#if currentLibrary}
-				<div class="border-t border-gray-200">
+				<div class="border-t border-gray-200 dark:border-gray-700">
 					<button
 						onclick={scanLibrary}
 						disabled={scanning}
-						class="flex items-center w-full gap-2 px-4 py-2 text-sm transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+						class="flex items-center w-full gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
 					>
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-						</svg>
+						<RefreshCw class="w-4 h-4 {scanning ? 'animate-spin' : ''}" />
 						<span>{scanning ? 'Scanning...' : 'Scan Library'}</span>
 					</button>
 				</div>
 			{/if}
-			<div class="border-t border-gray-200">
+			<div class="border-t border-gray-200 dark:border-gray-700">
 				<button
 					onclick={openCreateModal}
-					class="flex items-center w-full gap-2 px-4 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-gray-50"
+					class="flex items-center w-full gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
 				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-					</svg>
+					<Plus class="w-4 h-4" />
 					<span>New Library</span>
 				</button>
 			</div>
@@ -232,36 +222,34 @@
 	{/if}
 
 	{#if scanStats}
-		<div class="fixed top-20 right-6 z-50 w-80 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+		<div class="fixed top-20 right-6 z-50 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4">
 			<div class="flex items-start justify-between mb-3">
-				<h4 class="font-semibold text-gray-900">Scan Complete</h4>
-				<button onclick={() => scanStats = null} class="text-gray-400 hover:text-gray-600">
-					<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-						<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-					</svg>
+				<h4 class="font-semibold text-gray-900 dark:text-white">Scan Complete</h4>
+				<button onclick={() => scanStats = null} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-5 h-5" />
 				</button>
 			</div>
 			<div class="space-y-2 text-sm">
 				{#if scanStats.added > 0}
 					<div class="flex justify-between">
-						<span class="text-gray-600">Added:</span>
+						<span class="text-gray-600 dark:text-gray-400">Added:</span>
 						<span class="font-medium text-green-600">{scanStats.added}</span>
 					</div>
 				{/if}
 				{#if scanStats.updated > 0}
 					<div class="flex justify-between">
-						<span class="text-gray-600">Updated:</span>
+						<span class="text-gray-600 dark:text-gray-400">Updated:</span>
 						<span class="font-medium text-blue-600">{scanStats.updated}</span>
 					</div>
 				{/if}
 				{#if scanStats.removed > 0}
 					<div class="flex justify-between">
-						<span class="text-gray-600">Removed:</span>
+						<span class="text-gray-600 dark:text-gray-400">Removed:</span>
 						<span class="font-medium text-red-600">{scanStats.removed}</span>
 					</div>
 				{/if}
 				{#if scanStats.added === 0 && scanStats.updated === 0 && scanStats.removed === 0}
-					<p class="text-gray-500">No changes detected</p>
+					<p class="text-gray-500 dark:text-gray-400">No changes detected</p>
 				{/if}
 			</div>
 		</div>
@@ -278,23 +266,23 @@
 		aria-labelledby="create-library-title-switcher"
 		tabindex="-1"
 	>
-		<div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
-			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-				<h3 id="create-library-title-switcher" class="text-lg font-semibold">Create New Library</h3>
-				<button onclick={closeCreateModal} class="flex items-center justify-center w-8 h-8 text-2xl text-gray-500 transition-colors hover:text-gray-900">
-					×
+		<div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<h3 id="create-library-title-switcher" class="text-lg font-semibold text-gray-900 dark:text-white">Create New Library</h3>
+				<button onclick={closeCreateModal} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-6 h-6" />
 				</button>
 			</div>
 			
 			<div class="p-6">
 				{#if error}
-					<div class="px-3 py-2 mb-4 text-sm text-red-800 bg-red-100 border border-red-200 rounded">
+					<div class="px-3 py-2 mb-4 text-sm text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
 						{error}
 					</div>
 				{/if}
 
 				<div class="mb-4">
-					<label for="library-name-switcher" class="block mb-2 text-sm font-medium text-gray-700">Library Name</label>
+					<label for="library-name-switcher" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Library Name</label>
 					<input
 						id="library-name-switcher"
 						type="text"
@@ -305,7 +293,7 @@
 				</div>
 
 				<div class="mb-4">
-					<label for="library-path-switcher" class="block mb-2 text-sm font-medium text-gray-700">Folder Path</label>
+					<label for="library-path-switcher" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Folder Path</label>
 					<div class="flex gap-2">
 						<input
 							id="library-path-switcher"
@@ -316,7 +304,7 @@
 						/>
 						<button 
 							onclick={() => showFolderBrowserModal = true}
-							class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 hover:border-gray-400"
+							class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
 						>
 						Browse
 						</button>
@@ -324,13 +312,13 @@
 				</div>
 			</div>
 
-			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
-				<button onclick={closeCreateModal} class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 hover:border-gray-400">
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+				<button onclick={closeCreateModal} class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500">
 					Cancel
 				</button>
 				<button 
 					onclick={createLibrary} 
-					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-500 rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
 					disabled={loading || !newLibraryName.trim() || !newLibraryPath.trim()}
 				>
 					{loading ? 'Creating...' : 'Create'}
@@ -350,11 +338,11 @@
 		aria-labelledby="folder-browser-title-switcher"
 		tabindex="-1"
 	>
-		<div class="w-full max-w-2xl bg-white rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
-			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-				<h3 id="folder-browser-title-switcher" class="text-lg font-semibold">Select Folder</h3>
-				<button onclick={() => showFolderBrowserModal = false} class="flex items-center justify-center w-8 h-8 text-2xl text-gray-500 transition-colors hover:text-gray-900">
-					×
+		<div class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<h3 id="folder-browser-title-switcher" class="text-lg font-semibold text-gray-900 dark:text-white">Select Folder</h3>
+				<button onclick={() => showFolderBrowserModal = false} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-6 h-6" />
 				</button>
 			</div>
 			
@@ -362,10 +350,10 @@
 				<FolderBrowser onSelect={handleFolderSelect} />
 			</div>
 
-			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
 				<button 
 					onclick={() => showFolderBrowserModal = false} 
-					class="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 hover:border-gray-400"
+					class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
 				>
 					Cancel
 				</button>

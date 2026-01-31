@@ -8,6 +8,7 @@
 	import MediaDetailModal from '$lib/components/MediaDetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import BulkEditingPanel from '$lib/components/BulkEditingPanel.svelte';
+	import { Check } from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -183,22 +184,22 @@
 			<div class="flex items-center justify-center py-20">
 				<div class="text-center">
 					<div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-					<p class="mt-4 text-gray-600">Loading media...</p>
+					<p class="mt-4 text-gray-600 dark:text-gray-400">Loading media...</p>
 				</div>
 			</div>
 		{:else if error}
 			<div class="text-center py-20">
-				<p class="text-red-600">{error}</p>
+				<p class="text-red-600 dark:text-red-400">{error}</p>
 				<button
 					type="button"
 					onclick={loadMedia}
-					class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+					class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600"
 				>
 					Retry
 				</button>
 			</div>
 		{:else if mediaItems.length === 0}
-			<div class="text-center py-20 text-gray-500">
+			<div class="text-center py-20 text-gray-500 dark:text-gray-400">
 				<p class="text-lg">No media found</p>
 				{#if searchQuery || mediaType !== 'all'}
 					<p class="mt-2 text-sm">Try adjusting your filters</p>
@@ -210,7 +211,7 @@
 			<div class="space-y-6">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-4">
-						<p class="text-sm text-gray-600">
+						<p class="text-sm text-gray-600 dark:text-gray-400">
 							Showing {mediaItems.length} of {totalItems} items
 						</p>
 						{#if bulkSelectMode}
@@ -224,7 +225,7 @@
 							<button
 								type="button"
 								onclick={() => showBulkEditPanel = true}
-								class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+								class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
 							>
 								Edit Selected
 							</button>
@@ -232,7 +233,7 @@
 						<button
 							type="button"
 							onclick={toggleBulkSelect}
-							class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors {bulkSelectMode ? 'bg-blue-50 border-blue-600 text-blue-600' : ''}"
+							class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors {bulkSelectMode ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}"
 						>
 							{bulkSelectMode ? 'Cancel Selection' : 'Bulk Select'}
 						</button>
@@ -240,14 +241,14 @@
 							<button
 								type="button"
 								onclick={selectAll}
-								class="px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 underline"
+								class="px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
 							>
 								Select All
 							</button>
 							<button
 								type="button"
 								onclick={deselectAll}
-								class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 underline"
+								class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline"
 							>
 								Deselect All
 							</button>
@@ -262,7 +263,7 @@
 								<button
 									type="button"
 									onclick={() => toggleMediaSelection(media.id)}
-									class="w-full aspect-square rounded-lg overflow-hidden border-2 transition-all {selectedMediaIds.has(media.id) ? 'border-blue-600 ring-2 ring-blue-600' : 'border-transparent hover:border-gray-300'}"
+									class="w-full aspect-square rounded-lg overflow-hidden border-2 transition-all {selectedMediaIds.has(media.id) ? 'border-blue-600 ring-2 ring-blue-600' : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'}"
 								>
 									<img
 										src="/api/media/{media.id}/thumbnail"
@@ -272,9 +273,7 @@
 								</button>
 								{#if selectedMediaIds.has(media.id)}
 									<div class="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-										<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-											<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-										</svg>
+										<Check class="w-4 h-4 text-white" />
 									</div>
 								{/if}
 							</div>

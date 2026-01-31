@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { User } from 'lucide-svelte';
+	import { User, Check, Circle } from 'lucide-svelte';
 
 	interface PersonWithState {
 		id: number;
@@ -39,18 +39,16 @@
 
 	const getPersonButtonClass = (person: PersonWithState) => {
 		if (person.state === 'all') {
-			return 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100';
+			return 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30';
 		}
 		if (person.state === 'some') {
-			return 'border-green-300 bg-green-50/50 text-green-600/70 hover:bg-green-100/70';
+			return 'border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-900/10 text-green-600/70 dark:text-green-400/70 hover:bg-green-100/70 dark:hover:bg-green-900/20';
 		}
-		return 'border-gray-300 text-gray-700 hover:bg-gray-50';
+		return 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700';
 	};
 
 	const getPersonIcon = (person: PersonWithState) => {
-		if (person.state === 'all') return '✓';
-		if (person.state === 'some') return '◐';
-		return '';
+		return person.state;
 	};
 
 	const getPersonTitle = (person: PersonWithState) => {
@@ -65,22 +63,22 @@
 </script>
 
 <div class="p-4 space-y-4">
-	<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-		<p class="text-sm text-blue-800">
+	<div class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+		<p class="text-sm text-blue-800 dark:text-blue-200">
 			Click people to credit them on all selected items. Click again to remove from all items.
 		</p>
 	</div>
 
 	{#if error}
-		<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+		<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-800 dark:text-red-200">
 			{error}
 		</div>
 	{/if}
 
 	<div>
 		<div class="flex items-center justify-between mb-3">
-			<h4 class="text-sm font-medium text-gray-700">People</h4>
-			<div class="flex items-center gap-3 text-xs text-gray-500">
+			<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">People</h4>
+			<div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
 				<div class="flex items-center gap-1">
 					<span class="w-3 h-3 rounded border-2 border-green-500 bg-green-50"></span>
 					<span>All</span>
@@ -92,7 +90,7 @@
 			</div>
 		</div>
 		{#if people.length === 0}
-			<p class="text-sm text-gray-500 text-center py-8">No people available. Create people first.</p>
+			<p class="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No people available. Create people first.</p>
 		{:else}
 			<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
 				{#each people as person (person.id)}
@@ -104,8 +102,10 @@
 						title={getPersonTitle(person)}
 					>
 						<div class="flex items-center gap-2 w-full">
-							{#if getPersonIcon(person)}
-								<span class="text-xs font-bold">{getPersonIcon(person)}</span>
+							{#if person.state === 'all'}
+								<Check class="w-3 h-3" />
+							{:else if person.state === 'some'}
+								<Circle class="w-3 h-3 fill-current opacity-50" />
 							{:else}
 								<User class="w-3 h-3" />
 							{/if}

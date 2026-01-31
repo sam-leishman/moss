@@ -65,54 +65,54 @@
 </script>
 
 <div class="flex flex-col gap-3">
-	<div class="pb-3 border-b border-gray-200">
+	<div class="pb-3 border-b border-gray-200 dark:border-gray-700">
 		<div class="flex items-center gap-2 mb-2">
-			<span class="text-xs font-medium text-gray-500 uppercase">Current Location:</span>
-			<span class="text-sm font-semibold text-blue-600 font-mono">/media{displayPath === '/' ? '' : displayPath}</span>
+			<span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Current Location:</span>
+			<span class="text-sm font-semibold text-blue-600 dark:text-blue-400 font-mono">/media{displayPath === '/' ? '' : displayPath}</span>
 		</div>
-		<p class="text-xs text-gray-600">Navigate to a folder below, then click Select to choose it.</p>
+		<p class="text-xs text-gray-600 dark:text-gray-400">Navigate to a folder below, then click Select to choose it.</p>
 	</div>
 
 	{#if error}
-		<div class="px-3 py-2 text-sm text-red-800 bg-red-100 rounded">{error}</div>
+		<div class="px-3 py-2 text-sm text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-900/20 rounded">{error}</div>
 	{/if}
 
 	{#if loading}
-		<div class="py-8 text-sm text-center text-gray-500">Loading folders...</div>
+		<div class="py-8 text-sm text-center text-gray-500 dark:text-gray-400">Loading folders...</div>
 	{:else}
 		<div class="flex flex-col gap-1.5 overflow-y-auto max-h-80">
 			{#if parentPath}
 				<button 
 					onclick={() => navigateToFolder(parentPath!)}
-					class="flex items-center w-full gap-2 px-3 py-2 font-semibold text-left transition-colors bg-gray-50 border border-gray-200 rounded hover:bg-gray-100 hover:border-blue-500"
+					class="flex items-center w-full gap-2 px-3 py-2 font-semibold text-left transition-colors bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-blue-500"
 				>
-					<Folder class="w-5 h-5 flex-shrink-0 text-gray-600" />
-					<span class="flex-1 truncate text-gray-700">..</span>
+					<Folder class="w-5 h-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
+					<span class="flex-1 truncate text-gray-700 dark:text-gray-300">..</span>
 				</button>
 			{/if}
 
 			{#if folders.length === 0}
-				<div class="py-8 text-sm text-center text-gray-500">
+				<div class="py-8 text-sm text-center text-gray-500 dark:text-gray-400">
 					<p>No subfolders in this directory.</p>
 				</div>
 			{:else}
 				{#each folders as folder (folder.path)}
 					<button 
 						onclick={() => navigateToFolder(folder.path)}
-						class="flex items-center w-full gap-2 px-3 py-2 text-left transition-colors bg-white border border-gray-200 rounded hover:bg-gray-50 hover:border-blue-500"
+						class="flex items-center w-full gap-2 px-3 py-2 text-left transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-blue-500"
 					>
-						<Folder class="w-5 h-5 flex-shrink-0 text-gray-600" />
-						<span class="flex-1 truncate text-gray-700">{folder.name}</span>
+						<Folder class="w-5 h-5 flex-shrink-0 text-gray-600 dark:text-gray-400" />
+						<span class="flex-1 truncate text-gray-700 dark:text-gray-300">{folder.name}</span>
 					</button>
 				{/each}
 			{/if}
 		</div>
 	{/if}
 
-	<div class="pt-4 mt-4 border-t border-gray-200">
+	<div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
 		<button 
 			onclick={selectCurrentFolder}
-			class="w-full px-4 py-2.5 text-sm font-medium text-white transition-colors bg-blue-500 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+			class="w-full px-4 py-2.5 text-sm font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 		>
 			Select /media{displayPath === '/' ? '' : displayPath}
 		</button>

@@ -3,6 +3,25 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			// Theme detection logic - keep in sync with src/lib/stores/theme.svelte.ts
+			try {
+				const stored = localStorage.getItem('theme');
+				const validTheme = (stored === 'light' || stored === 'dark') ? stored : null;
+				
+				let finalTheme;
+				if (validTheme) {
+					finalTheme = validTheme;
+				} else {
+					const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+					finalTheme = prefersDark ? 'dark' : 'light';
+				}
+				
+				if (finalTheme === 'dark') {
+					document.documentElement.classList.add('dark');
+				}
+			} catch (e) {}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

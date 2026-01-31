@@ -100,30 +100,30 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="w-full max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[80vh] flex flex-col"
+		class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[80vh] flex flex-col"
 		onclick={(e) => e.stopPropagation()}
 	>
-		<div class="flex items-center justify-between p-4 border-b border-gray-200">
-			<h3 class="text-lg font-semibold text-gray-900">
+		<div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+			<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 				Bulk Edit {selectedCount} Item{selectedCount !== 1 ? 's' : ''}
 			</h3>
 			<button
 				type="button"
 				onclick={onClose}
-				class="text-gray-400 hover:text-gray-600"
+				class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
 				aria-label="Close"
 			>
 				<X class="w-5 h-5" />
 			</button>
 		</div>
 
-		<div class="border-b border-gray-200">
+		<div class="border-b border-gray-200 dark:border-gray-700">
 			<div class="flex">
 				{#each tabs as tab (tab.id)}
 					<button
 						type="button"
 						onclick={() => activeTab = tab.id}
-						class="flex-1 px-4 py-3 text-sm font-medium border-b-2 transition-colors {activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}"
+						class="flex-1 px-4 py-3 text-sm font-medium border-b-2 transition-colors {activeTab === tab.id ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
 					>
 						{tab.label}
 					</button>
@@ -134,14 +134,14 @@
 		<div class="flex-1 overflow-y-auto">
 			{#if error}
 				<div class="p-4">
-					<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+					<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-800 dark:text-red-200">
 						{error}
 					</div>
 				</div>
 			{/if}
 
 			{#if loadingState}
-				<div class="p-8 text-center text-gray-500">
+				<div class="p-8 text-center text-gray-500 dark:text-gray-400">
 					<div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
 					<p class="text-sm">Loading...</p>
 				</div>

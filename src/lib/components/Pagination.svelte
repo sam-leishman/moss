@@ -66,7 +66,7 @@
 		<button
 			onclick={handlePrevious}
 			disabled={currentPage === 1}
-			class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+			class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
 			type="button"
 		>
 			Previous
@@ -75,13 +75,13 @@
 		<div class="flex gap-1">
 			{#each getPageNumbers() as page}
 				{#if page === '...'}
-					<span class="px-3 py-2 text-gray-400">...</span>
+					<span class="px-3 py-2 text-gray-400 dark:text-gray-500">...</span>
 				{:else}
 					<button
 						onclick={() => handlePageClick(page)}
 						class="px-3 py-2 rounded-md text-sm font-medium transition-colors {page === currentPage
 							? 'bg-blue-600 text-white'
-							: 'text-gray-700 hover:bg-gray-100'}"
+							: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}"
 						type="button"
 					>
 						{page}
@@ -93,7 +93,7 @@
 		<button
 			onclick={handleNext}
 			disabled={currentPage === totalPages}
-			class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+			class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
 			type="button"
 		>
 			Next

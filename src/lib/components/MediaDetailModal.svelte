@@ -188,16 +188,16 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="absolute top-0 right-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out {showInfo ? 'translate-x-0' : 'translate-x-full'}"
+			class="absolute top-0 right-0 h-full w-80 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out {showInfo ? 'translate-x-0' : 'translate-x-full'}"
 			onclick={handlePanelClick}
 		>
 			<div class="h-full flex flex-col">
-				<div class="flex items-center justify-between p-4 border-b border-gray-200">
-					<h3 class="text-lg font-semibold text-gray-900">Information</h3>
+				<div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Information</h3>
 					<button
 						type="button"
 						onclick={withStopPropagation(toggleInfo)}
-						class="text-gray-400 hover:text-gray-600"
+						class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
 						aria-label="Close info panel"
 					>
 						<X class="w-5 h-5" />
@@ -207,53 +207,53 @@
 				<div class="flex-1 overflow-y-auto p-4 space-y-4">
 					{#if media.title}
 						<div>
-							<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Title</h4>
-							<p class="text-gray-900">{media.title}</p>
+							<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Title</h4>
+							<p class="text-gray-900 dark:text-white">{media.title}</p>
 						</div>
 					{/if}
 
 					<div>
-						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Filename</h4>
-						<p class="text-gray-900 text-sm">{basename(media.path)}</p>
+						<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Filename</h4>
+						<p class="text-gray-900 dark:text-white text-sm">{basename(media.path)}</p>
 					</div>
 
 					<div>
-						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Type</h4>
-						<p class="text-gray-900 capitalize">{media.media_type}</p>
+						<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Type</h4>
+						<p class="text-gray-900 dark:text-white capitalize">{media.media_type}</p>
 					</div>
 
 					<div>
-						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">File Size</h4>
-						<p class="text-gray-900">{formatBytes(media.size)}</p>
+						<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">File Size</h4>
+						<p class="text-gray-900 dark:text-white">{formatBytes(media.size)}</p>
 					</div>
 
 					<div>
-						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Created</h4>
-						<p class="text-gray-900 text-sm">{formatDate(media.birthtime)}</p>
+						<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Created</h4>
+						<p class="text-gray-900 dark:text-white text-sm">{formatDate(media.birthtime)}</p>
 					</div>
 
 					<div>
-						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Added to Library</h4>
-						<p class="text-gray-900 text-sm">{formatDate(media.created_at)}</p>
+						<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Added to Library</h4>
+						<p class="text-gray-900 dark:text-white text-sm">{formatDate(media.created_at)}</p>
 					</div>
 
 					<div>
-						<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">File Path</h4>
-						<p class="text-gray-700 text-xs break-all font-mono bg-gray-50 p-2 rounded">{media.path}</p>
+						<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">File Path</h4>
+						<p class="text-gray-700 dark:text-gray-300 text-xs break-all font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded">{media.path}</p>
 					</div>
 
 					{#if credits.length > 0}
 						<div>
-							<h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Credits</h4>
+							<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Credits</h4>
 							<div class="space-y-2">
 								{#each credits as person (person.id)}
 									<a
 										href="/libraries/{media.library_id}/people/{person.id}"
-										class="block p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+										class="block p-2 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
 										onclick={(e) => e.stopPropagation()}
 									>
-										<p class="text-sm font-medium text-gray-900">{person.name}</p>
-										<p class="text-xs text-gray-500 capitalize">{person.role}</p>
+										<p class="text-sm font-medium text-gray-900 dark:text-white">{person.name}</p>
+										<p class="text-xs text-gray-500 dark:text-gray-400 capitalize">{person.role}</p>
 									</a>
 								{/each}
 							</div>
@@ -267,16 +267,16 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="absolute top-0 right-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out {showEdit ? 'translate-x-0' : 'translate-x-full'}"
+			class="absolute top-0 right-0 h-full w-80 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out {showEdit ? 'translate-x-0' : 'translate-x-full'}"
 			onclick={handlePanelClick}
 		>
 			<div class="h-full flex flex-col">
-				<div class="flex items-center justify-between p-4 border-b border-gray-200">
-					<h3 class="text-lg font-semibold text-gray-900">Edit</h3>
+				<div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Edit</h3>
 					<button
 						type="button"
 						onclick={withStopPropagation(toggleEdit)}
-						class="text-gray-400 hover:text-gray-600"
+						class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
 						aria-label="Close edit panel"
 					>
 						<X class="w-5 h-5" />
@@ -285,7 +285,7 @@
 
 				<div class="flex-1 overflow-y-auto p-4 space-y-6">
 					<TagSelector mediaId={media.id} />
-					<div class="border-t border-gray-200 pt-4">
+					<div class="border-t border-gray-200 dark:border-gray-700 pt-4">
 						<CreditSelector mediaId={media.id} />
 					</div>
 				</div>

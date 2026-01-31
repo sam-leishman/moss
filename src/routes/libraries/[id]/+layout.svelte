@@ -1,49 +1,45 @@
 <script lang="ts">
 	import LibrarySwitcher from '$lib/components/LibrarySwitcher.svelte';
+	import Sidebar from '$lib/components/Sidebar.svelte';
+	import { Menu } from 'lucide-svelte';
 	import type { LayoutData } from './$types';
-	import { page } from '$app/stores';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
 
-	const isActive = (path: string) => {
-		return $page.url.pathname === path || $page.url.pathname.startsWith(path + '/');
+	let sidebarOpen = $state(false);
+
+	const toggleSidebar = () => {
+		sidebarOpen = !sidebarOpen;
+	};
+
+	const closeSidebar = () => {
+		sidebarOpen = false;
 	};
 </script>
 
-<div class="min-h-screen bg-gray-50">
-	<header class="bg-white border-b border-gray-200">
-		<div class="flex items-center justify-between px-6 py-4 max-w-screen-2xl mx-auto">
-			<h1 class="text-2xl font-bold text-gray-900">XView</h1>
+<div class="min-h-screen bg-gray-50 dark:bg-gray-950">
+	<header class="fixed top-0 left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-20">
+		<div class="flex items-center justify-between px-6 py-4">
+			<div class="flex items-center gap-4">
+				<button
+					type="button"
+					onclick={toggleSidebar}
+					class="lg:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+					aria-label="Toggle sidebar"
+				>
+					<Menu class="w-6 h-6" />
+				</button>
+				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">XView</h1>
+			</div>
 			<LibrarySwitcher currentLibrary={data.library} />
 		</div>
 	</header>
 
-	<nav class="bg-white border-b border-gray-200">
-		<div class="px-6 max-w-screen-2xl mx-auto">
-			<div class="flex gap-6">
-				<a
-					href="/libraries/{data.library.id}"
-					class="px-1 py-4 text-sm font-medium border-b-2 transition-colors {isActive(`/libraries/${data.library.id}`) && !$page.url.pathname.includes('/tags') && !$page.url.pathname.includes('/people') ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}"
-				>
-					Media
-				</a>
-				<a
-					href="/libraries/{data.library.id}/tags"
-					class="px-1 py-4 text-sm font-medium border-b-2 transition-colors {isActive(`/libraries/${data.library.id}/tags`) ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}"
-				>
-					Tags
-				</a>
-				<a
-					href="/libraries/{data.library.id}/people"
-					class="px-1 py-4 text-sm font-medium border-b-2 transition-colors {isActive(`/libraries/${data.library.id}/people`) ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}"
-				>
-					People
-				</a>
-			</div>
-		</div>
-	</nav>
+	<Sidebar libraryId={data.library.id} isOpen={sidebarOpen} onClose={closeSidebar} />
 
-	<main class="px-6 py-6 max-w-screen-2xl mx-auto">
-		{@render children()}
+	<main class="lg:pl-20 min-h-screen bg-gray-50 dark:bg-gray-950" style="padding-top: var(--header-height);">
+		<div class="px-6 py-6">
+			{@render children()}
+		</div>
 	</main>
 </div>

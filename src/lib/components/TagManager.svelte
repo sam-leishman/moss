@@ -98,17 +98,17 @@
 	});
 </script>
 
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-	<h3 class="text-lg font-semibold text-gray-900 mb-4">Tag Management</h3>
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+	<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Tag Management</h3>
 
 	{#if error}
-		<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
+		<div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-800 dark:text-red-200">
 			{error}
 		</div>
 	{/if}
 
 	<div class="mb-6">
-		<label for="new-tag" class="block text-sm font-medium text-gray-700 mb-2">
+		<label for="new-tag" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 			Create New Tag
 		</label>
 		<div class="flex gap-2">
@@ -118,7 +118,7 @@
 				bind:value={newTagName}
 				onkeydown={handleKeydown}
 				placeholder="Enter tag name (alphanumeric, -, _, spaces)"
-				class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 				disabled={creating}
 				maxlength="50"
 			/>
@@ -126,26 +126,26 @@
 				type="button"
 				onclick={createTag}
 				disabled={creating || !newTagName.trim()}
-				class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+				class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed transition-colors"
 			>
 				{creating ? 'Creating...' : 'Create'}
 			</button>
 		</div>
-		<p class="mt-1 text-xs text-gray-500">
+		<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
 			Max 50 characters. Only letters, numbers, hyphens, underscores, and spaces allowed.
 		</p>
 	</div>
 
 	<div>
-		<h4 class="text-sm font-medium text-gray-700 mb-3">Existing Tags ({tags.length})</h4>
+		<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Existing Tags ({tags.length})</h4>
 		
 		{#if loading}
-			<div class="text-center py-8 text-gray-500">
+			<div class="text-center py-8 text-gray-500 dark:text-gray-400">
 				<Loader2 class="inline-block animate-spin h-8 w-8" />
 				<p class="mt-2">Loading tags...</p>
 			</div>
 		{:else if tags.length === 0}
-			<div class="text-center py-8 text-gray-500">
+			<div class="text-center py-8 text-gray-500 dark:text-gray-400">
 				<TagIcon class="mx-auto h-12 w-12 text-gray-400" />
 				<p class="mt-2">No tags yet</p>
 				<p class="text-sm">Create your first tag above</p>
@@ -153,16 +153,16 @@
 		{:else}
 			<div class="space-y-2 max-h-96 overflow-y-auto">
 				{#each tags as tag (tag.id)}
-					<div class="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
+					<div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
 						<div class="flex items-center gap-2">
-							<TagIcon class="w-4 h-4 text-gray-400" />
-							<span class="text-sm font-medium text-gray-900">{tag.name}</span>
+							<TagIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+							<span class="text-sm font-medium text-gray-900 dark:text-white">{tag.name}</span>
 						</div>
 						<button
 							type="button"
 							onclick={() => deleteTag(tag.id)}
 							disabled={deletingId === tag.id}
-							class="text-red-600 hover:text-red-800 disabled:text-gray-400 transition-colors"
+							class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:text-gray-400 dark:disabled:text-gray-600 transition-colors"
 							aria-label="Delete tag"
 						>
 							{#if deletingId === tag.id}

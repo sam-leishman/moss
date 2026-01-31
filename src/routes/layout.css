@@ -1,3 +1,9 @@
 @import 'tailwindcss';
 
 @plugin '@tailwindcss/forms';
+
+@variant dark (&:where(.dark *));
+
+:root {
+	--header-height: 73px;
+}
