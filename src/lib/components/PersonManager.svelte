@@ -13,6 +13,7 @@
 	let error = $state<string | null>(null);
 	let showCreateModal = $state(false);
 	let editingPerson = $state<Person | null>(null);
+	let previousLibraryId = $state<number | undefined | null>(null);
 
 	let newPersonName = $state('');
 	let newPersonRole = $state<'artist' | 'performer'>('artist');
@@ -219,7 +220,11 @@
 	};
 
 	$effect(() => {
-		loadPeople();
+		// Reload when library changes
+		if (libraryId !== previousLibraryId) {
+			previousLibraryId = libraryId;
+			loadPeople();
+		}
 	});
 </script>
 

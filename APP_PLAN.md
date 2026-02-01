@@ -139,8 +139,8 @@ The application supports detailed credit attribution for media items:
 - [x] Cascade delete handling for person removal
 
 ### Phase 6: Advanced Features
-- [ ] Advanced search and filtering with combined criteria
-- [ ] Bulk operations with progress tracking
+- [x] Advanced search and filtering with combined criteria
+- [x] Bulk operations with progress tracking
 - [ ] Database backup/restore functionality
 - [ ] Export/import functionality
 - [ ] Statistics and analytics

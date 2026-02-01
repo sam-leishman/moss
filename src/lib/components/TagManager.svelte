@@ -24,6 +24,7 @@
 	let showCrossLibraryWarning = $state(false);
 	let crossLibraryUsage = $state<Array<{ library_id: number; library_name: string; count: number }>>([]);
 	let totalAffectedItems = $state(0);
+	let previousLibraryId = $state<number | undefined | null>(null);
 
 	const loadTags = async () => {
 		loading = true;
@@ -184,8 +185,12 @@
 		}
 	};
 
-	onMount(() => {
-		loadTags();
+	$effect(() => {
+		// Reload when library changes
+		if (libraryId !== previousLibraryId) {
+			previousLibraryId = libraryId;
+			loadTags();
+		}
 	});
 </script>
 

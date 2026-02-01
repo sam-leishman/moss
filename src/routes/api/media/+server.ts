@@ -21,6 +21,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const mediaTypeParam = url.searchParams.get('media_type');
 	const searchParam = url.searchParams.get('search');
 	const tagIdsParam = url.searchParams.get('tag_ids');
+	const personIdsParam = url.searchParams.get('person_ids');
 
 	if (!libraryIdParam) {
 		error(400, 'library_id is required');
@@ -63,6 +64,12 @@ export const GET: RequestHandler = async ({ url }) => {
 		tagIds = tagIdsParam.split(',').map(id => sanitizeInteger(id.trim())).filter(id => id > 0);
 	}
 
+	// Person/credit filtering with indexed queries
+	let personIds: number[] = [];
+	if (personIdsParam && personIdsParam.trim()) {
+		personIds = personIdsParam.split(',').map(id => sanitizeInteger(id.trim())).filter(id => id > 0);
+	}
+
 	const whereClause = whereConditions.join(' AND ');
 
 	let countStmt;
@@ -70,30 +77,51 @@ export const GET: RequestHandler = async ({ url }) => {
 	let total: number;
 	let items: Media[];
 
+	// Build combined filter queries for tags and persons
+	const filterQueries: string[] = [];
+	const filterParams: number[] = [];
+
 	if (tagIds.length > 0) {
 		// Filter by tags using indexed media_tag table
 		// Use INTERSECT to ensure media has ALL specified tags (AND logic)
 		const tagFilterQuery = tagIds.map(() => `
 			SELECT media_id FROM media_tag WHERE tag_id = ?
 		`).join(' INTERSECT ');
+		filterQueries.push(tagFilterQuery);
+		filterParams.push(...tagIds);
+	}
+
+	if (personIds.length > 0) {
+		// Filter by persons using indexed media_credit table
+		// Use INTERSECT to ensure media has ALL specified persons credited (AND logic)
+		const personFilterQuery = personIds.map(() => `
+			SELECT media_id FROM media_credit WHERE person_id = ?
+		`).join(' INTERSECT ');
+		filterQueries.push(personFilterQuery);
+		filterParams.push(...personIds);
+	}
+
+	if (filterQueries.length > 0) {
+		// Combine all filters with INTERSECT for AND logic across all criteria
+		const combinedFilterQuery = filterQueries.join(' INTERSECT ');
 
 		countStmt = db.prepare(`
 			SELECT COUNT(*) as count FROM media 
-			WHERE ${whereClause} AND id IN (${tagFilterQuery})
+			WHERE ${whereClause} AND id IN (${combinedFilterQuery})
 		`);
-		const countResult = countStmt.get(...countParams, ...tagIds) as { count: number };
+		const countResult = countStmt.get(...countParams, ...filterParams) as { count: number };
 		total = countResult.count;
 
-		queryParams.push(...tagIds, pageSize, offset);
+		queryParams.push(...filterParams, pageSize, offset);
 		mediaStmt = db.prepare(`
 			SELECT * FROM media 
-			WHERE ${whereClause} AND id IN (${tagFilterQuery})
+			WHERE ${whereClause} AND id IN (${combinedFilterQuery})
 			ORDER BY created_at DESC, id DESC
 			LIMIT ? OFFSET ?
 		`);
 		items = mediaStmt.all(...queryParams) as Media[];
 	} else {
-		// No tag filtering
+		// No tag or person filtering
 		countStmt = db.prepare(`SELECT COUNT(*) as count FROM media WHERE ${whereClause}`);
 		const countResult = countStmt.get(...countParams) as { count: number };
 		total = countResult.count;

@@ -16,6 +16,8 @@
 	let assigning = $state<number | null>(null);
 	let removing = $state<number | null>(null);
 	let showDropdown = $state(false);
+	let previousLibraryId = $state<number | null>(null);
+	let previousMediaId = $state<number | null>(null);
 
 	const loadTags = async () => {
 		loading = true;
@@ -96,7 +98,12 @@
 	};
 
 	$effect(() => {
-		loadTags();
+		// Reload when library or media changes
+		if (libraryId !== previousLibraryId || mediaId !== previousMediaId) {
+			previousLibraryId = libraryId;
+			previousMediaId = mediaId;
+			loadTags();
+		}
 	});
 
 	$effect(() => {

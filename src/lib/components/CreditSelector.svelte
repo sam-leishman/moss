@@ -14,6 +14,8 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let selectedPersonId = $state<number | null>(null);
+	let previousLibraryId = $state<number | null>(null);
+	let previousMediaId = $state<number | null>(null);
 
 	const loadCredits = async () => {
 		try {
@@ -87,8 +89,13 @@
 	);
 
 	$effect(() => {
-		loadCredits();
-		loadPeople();
+		// Reload when library or media changes
+		if (libraryId !== previousLibraryId || mediaId !== previousMediaId) {
+			previousLibraryId = libraryId;
+			previousMediaId = mediaId;
+			loadCredits();
+			loadPeople();
+		}
 	});
 </script>
 

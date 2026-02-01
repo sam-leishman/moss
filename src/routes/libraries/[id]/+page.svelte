@@ -25,6 +25,7 @@
 	let viewMode = $state<'grid' | 'list'>('grid');
 	let selectedMedia = $state<Media | null>(null);
 	let selectedTags = $state<number[]>([]);
+	let selectedPeople = $state<number[]>([]);
 	let bulkSelectMode = $state(false);
 	let selectedMediaIds = $state<Set<number>>(new Set());
 	let showBulkEditPanel = $state(false);
@@ -65,6 +66,10 @@
 				params.append('tag_ids', selectedTags.join(','));
 			}
 
+			if (selectedPeople.length > 0) {
+				params.append('person_ids', selectedPeople.join(','));
+			}
+
 			const response = await fetch(`/api/media?${params}`);
 			
 			if (!response.ok) {
@@ -103,6 +108,12 @@
 
 	const handleTagsChange = (tagIds: number[]) => {
 		selectedTags = tagIds;
+		currentPage = 1;
+		resetSelectionState();
+	};
+
+	const handlePeopleChange = (personIds: number[]) => {
+		selectedPeople = personIds;
 		currentPage = 1;
 		resetSelectionState();
 	};
@@ -242,6 +253,10 @@
 				params.append('tag_ids', selectedTags.join(','));
 			}
 
+			if (selectedPeople.length > 0) {
+				params.append('person_ids', selectedPeople.join(','));
+			}
+
 			const response = await fetch(`/api/media?${params}`);
 			
 			if (!response.ok) {
@@ -279,11 +294,13 @@
 		{mediaType}
 		{viewMode}
 		{selectedTags}
+		{selectedPeople}
 		libraryId={data.library.id}
 		onSearchChange={handleSearchChange}
 		onMediaTypeChange={handleMediaTypeChange}
 		onViewModeChange={handleViewModeChange}
 		onTagsChange={handleTagsChange}
+		onPeopleChange={handlePeopleChange}
 	/>
 
 	<div class="flex-1 overflow-y-auto p-6">
