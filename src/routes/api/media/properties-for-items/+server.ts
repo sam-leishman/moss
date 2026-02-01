@@ -29,6 +29,23 @@ export const POST: RequestHandler = async ({ request }) => {
 		const placeholders = sanitizedMediaIds.map(() => '?').join(',');
 		const totalSelected = sanitizedMediaIds.length;
 
+		// Determine the library_id from the selected media items
+		// All selected items should belong to the same library
+		const libraryResult = db.prepare(`
+			SELECT DISTINCT library_id FROM media WHERE id IN (${placeholders})
+		`).all(...sanitizedMediaIds) as Array<{ library_id: number }>;
+
+		if (libraryResult.length === 0) {
+			throw new ValidationError('No valid media items found');
+		}
+
+		if (libraryResult.length > 1) {
+			throw new ValidationError('Cannot bulk edit items from different libraries');
+		}
+
+		const libraryId = libraryResult[0].library_id;
+
+		// Get tags filtered by library (global tags + library-specific tags)
 		const tagCounts = db.prepare(`
 			SELECT 
 				t.id,
@@ -36,9 +53,10 @@ export const POST: RequestHandler = async ({ request }) => {
 				COUNT(DISTINCT mt.media_id) as count
 			FROM tag t
 			LEFT JOIN media_tag mt ON mt.tag_id = t.id AND mt.media_id IN (${placeholders})
+			WHERE (t.library_id = ? OR t.is_global = 1)
 			GROUP BY t.id, t.name
-			ORDER BY t.name ASC
-		`).all(...sanitizedMediaIds) as Array<{ id: number; name: string; count: number }>;
+			ORDER BY t.is_global DESC, t.name ASC
+		`).all(...sanitizedMediaIds, libraryId) as Array<{ id: number; name: string; count: number }>;
 
 		const tagsWithState = tagCounts.map(tag => ({
 			id: tag.id,
@@ -48,6 +66,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			state: tag.count === 0 ? 'none' : tag.count === totalSelected ? 'all' : 'some'
 		}));
 
+		// Get people filtered by library (global people + library-specific people)
 		const personCounts = db.prepare(`
 			SELECT 
 				p.id,
@@ -56,9 +75,10 @@ export const POST: RequestHandler = async ({ request }) => {
 				COUNT(DISTINCT mc.media_id) as count
 			FROM person p
 			LEFT JOIN media_credit mc ON mc.person_id = p.id AND mc.media_id IN (${placeholders})
+			WHERE (p.library_id = ? OR p.is_global = 1)
 			GROUP BY p.id, p.name, p.role
-			ORDER BY p.name ASC
-		`).all(...sanitizedMediaIds) as Array<{ id: number; name: string; role: string; count: number }>;
+			ORDER BY p.is_global DESC, p.name ASC
+		`).all(...sanitizedMediaIds, libraryId) as Array<{ id: number; name: string; role: string; count: number }>;
 
 		const creditsWithState = personCounts.map(person => ({
 			id: person.id,
@@ -69,13 +89,16 @@ export const POST: RequestHandler = async ({ request }) => {
 			state: person.count === 0 ? 'none' : person.count === totalSelected ? 'all' : 'some'
 		}));
 
-		logger.info(`Fetched property states for ${sanitizedMediaIds.length} media items`);
+		logger.info(`Fetched property states for ${sanitizedMediaIds.length} media items in library ${libraryId}`);
 
 		return json({
 			tags: tagsWithState,
 			credits: creditsWithState
 		});
 	} catch (err) {
+		if (err instanceof ValidationError) {
+			throw err;
+		}
 		logger.error('Failed to fetch properties for items', err instanceof Error ? err : new Error(String(err)));
 		error(500, 'Failed to fetch properties for items');
 	}
