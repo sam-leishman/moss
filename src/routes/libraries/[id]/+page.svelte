@@ -28,6 +28,19 @@
 	let bulkSelectMode = $state(false);
 	let selectedMediaIds = $state<Set<number>>(new Set());
 	let showBulkEditPanel = $state(false);
+	let lastSelectedIndex = $state<number | null>(null);
+	let showSelectAllPagesBanner = $state(false);
+	let isSelectingAllPages = $state(false);
+	let selectAllPagesError = $state<string | null>(null);
+
+	const MAX_BULK_SELECT_ITEMS = 10000;
+
+	const resetSelectionState = () => {
+		selectedMediaIds = new Set();
+		lastSelectedIndex = null;
+		showSelectAllPagesBanner = false;
+		selectAllPagesError = null;
+	};
 
 	const loadMedia = async () => {
 		isLoading = true;
@@ -79,16 +92,19 @@
 	const handleSearchChange = (query: string) => {
 		searchQuery = query;
 		currentPage = 1;
+		resetSelectionState();
 	};
 
 	const handleMediaTypeChange = (type: MediaType | 'all') => {
 		mediaType = type;
 		currentPage = 1;
+		resetSelectionState();
 	};
 
 	const handleTagsChange = (tagIds: number[]) => {
 		selectedTags = tagIds;
 		currentPage = 1;
+		resetSelectionState();
 	};
 
 	const handleViewModeChange = (mode: 'grid' | 'list') => {
@@ -97,6 +113,7 @@
 
 	const handlePageChange = (page: number) => {
 		currentPage = page;
+		resetSelectionState();
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	};
 
@@ -145,27 +162,104 @@
 	const toggleBulkSelect = () => {
 		bulkSelectMode = !bulkSelectMode;
 		if (!bulkSelectMode) {
-			selectedMediaIds = new Set();
+			resetSelectionState();
 			showBulkEditPanel = false;
 		}
 	};
 
-	const toggleMediaSelection = (mediaId: number) => {
-		const newSet = new Set(selectedMediaIds);
-		if (newSet.has(mediaId)) {
-			newSet.delete(mediaId);
+	const toggleMediaSelection = (mediaId: number, shiftKey: boolean = false) => {
+		const currentIndex = mediaItems.findIndex(item => item.id === mediaId);
+		
+		if (shiftKey && lastSelectedIndex !== null && currentIndex !== -1) {
+			const newSet = new Set(selectedMediaIds);
+			const start = Math.min(lastSelectedIndex, currentIndex);
+			const end = Math.max(lastSelectedIndex, currentIndex);
+			
+			// Determine action based on the clicked item's current state
+			// If clicking an unselected item, select the range; if clicking a selected item, deselect the range
+			const shouldSelect = !selectedMediaIds.has(mediaId);
+			
+			for (let i = start; i <= end; i++) {
+				if (shouldSelect) {
+					newSet.add(mediaItems[i].id);
+				} else {
+					newSet.delete(mediaItems[i].id);
+				}
+			}
+			
+			selectedMediaIds = newSet;
+			// Update anchor to the clicked item for next shift-click
+			lastSelectedIndex = currentIndex;
 		} else {
-			newSet.add(mediaId);
+			const newSet = new Set(selectedMediaIds);
+			if (newSet.has(mediaId)) {
+				newSet.delete(mediaId);
+			} else {
+				newSet.add(mediaId);
+			}
+			selectedMediaIds = newSet;
+			// Update anchor for next shift-click
+			if (currentIndex !== -1) {
+				lastSelectedIndex = currentIndex;
+			}
 		}
-		selectedMediaIds = newSet;
 	};
 
 	const selectAll = () => {
 		selectedMediaIds = new Set(mediaItems.map(item => item.id));
+		lastSelectedIndex = mediaItems.length > 0 ? mediaItems.length - 1 : null;
+		// Show banner to select across all pages if there are multiple pages
+		if (totalPages > 1) {
+			showSelectAllPagesBanner = true;
+		}
+	};
+
+	const selectAllPages = async () => {
+		if (totalItems > MAX_BULK_SELECT_ITEMS) {
+			selectAllPagesError = `Cannot select more than ${MAX_BULK_SELECT_ITEMS.toLocaleString()} items at once. Please use filters to narrow your selection.`;
+			return;
+		}
+
+		isSelectingAllPages = true;
+		selectAllPagesError = null;
+
+		try {
+			const params = new URLSearchParams({
+				library_id: data.library.id.toString(),
+				page: '1',
+				page_size: totalItems.toString()
+			});
+
+			if (mediaType !== 'all') {
+				params.append('media_type', mediaType);
+			}
+
+			if (searchQuery.trim()) {
+				params.append('search', searchQuery.trim());
+			}
+
+			if (selectedTags.length > 0) {
+				params.append('tag_ids', selectedTags.join(','));
+			}
+
+			const response = await fetch(`/api/media?${params}`);
+			
+			if (!response.ok) {
+				throw new Error('Failed to load all items');
+			}
+
+			const result = await response.json();
+			selectedMediaIds = new Set(result.items.map((item: Media) => item.id));
+			showSelectAllPagesBanner = false;
+		} catch (err) {
+			selectAllPagesError = err instanceof Error ? err.message : 'Failed to select all items. Please try again.';
+		} finally {
+			isSelectingAllPages = false;
+		}
 	};
 
 	const deselectAll = () => {
-		selectedMediaIds = new Set();
+		resetSelectionState();
 	};
 
 	const handleBulkEditComplete = async () => {
@@ -175,7 +269,7 @@
 	const handleBulkEditClose = () => {
 		showBulkEditPanel = false;
 		bulkSelectMode = false;
-		selectedMediaIds = new Set();
+		resetSelectionState();
 	};
 </script>
 
@@ -222,6 +316,58 @@
 			</div>
 		{:else}
 			<div class="space-y-6">
+				{#if selectAllPagesError}
+					<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center justify-between">
+						<p class="text-sm text-red-800 dark:text-red-200">
+							{selectAllPagesError}
+						</p>
+						<button
+							type="button"
+							onclick={() => selectAllPagesError = null}
+							class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+							aria-label="Dismiss"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						</button>
+					</div>
+				{/if}
+
+				{#if showSelectAllPagesBanner}
+					<div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center justify-between">
+						<p class="text-sm text-blue-900 dark:text-blue-100">
+							All <span class="font-medium">{mediaItems.length}</span> items on this page are selected.
+							<button
+								type="button"
+								onclick={selectAllPages}
+								disabled={isSelectingAllPages}
+								class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{#if isSelectingAllPages}
+									Selecting...
+								{:else}
+									Select all {totalItems.toLocaleString()} items
+								{/if}
+							</button>
+							across all pages.
+						</p>
+						<button
+							type="button"
+							onclick={() => {
+								showSelectAllPagesBanner = false;
+								isSelectingAllPages = false;
+							}}
+							class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+							aria-label="Dismiss"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						</button>
+					</div>
+				{/if}
+
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-4">
 						<p class="text-sm text-gray-600 dark:text-gray-400">
@@ -231,6 +377,20 @@
 							<p class="text-sm font-medium text-blue-600">
 								{selectedMediaIds.size} selected
 							</p>
+							<button
+								type="button"
+								onclick={selectAll}
+								class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
+							>
+								Select All
+							</button>
+							<button
+								type="button"
+								onclick={deselectAll}
+								class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline"
+							>
+								Deselect All
+							</button>
 						{/if}
 					</div>
 					<div class="flex items-center gap-2">
@@ -250,22 +410,6 @@
 						>
 							{bulkSelectMode ? 'Cancel Selection' : 'Bulk Select'}
 						</button>
-						{#if bulkSelectMode}
-							<button
-								type="button"
-								onclick={selectAll}
-								class="px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
-							>
-								Select All
-							</button>
-							<button
-								type="button"
-								onclick={deselectAll}
-								class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline"
-							>
-								Deselect All
-							</button>
-						{/if}
 					</div>
 				</div>
 
@@ -275,7 +419,7 @@
 							<div class="relative group">
 								<button
 									type="button"
-									onclick={() => toggleMediaSelection(media.id)}
+									onclick={(e) => toggleMediaSelection(media.id, e.shiftKey)}
 									class="w-full aspect-square rounded-lg overflow-hidden border-2 transition-all {selectedMediaIds.has(media.id) ? 'border-blue-600 ring-2 ring-blue-600' : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'}"
 								>
 									<img

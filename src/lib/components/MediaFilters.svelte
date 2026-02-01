@@ -80,7 +80,7 @@
 	const availableTagsForDropdown = $derived(allTags.filter(tag => !selectedTags.includes(tag.id)));
 </script>
 
-<div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-col sm:flex-row gap-4">
 			<div class="flex-1 relative">

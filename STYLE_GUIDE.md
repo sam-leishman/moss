@@ -32,6 +32,11 @@ This document outlines the design system and styling conventions for the XView a
 - **Default Border**: `border-gray-200` / `dark:border-gray-700`
 - **Subtle Border**: `border-gray-300` / `dark:border-gray-600`
 
+### Border Radius
+- **Standard Rounding**: `rounded-lg` - Used for buttons, cards, inputs, and panels
+- **Full Rounding**: `rounded-full` - Used for badges, pills, and circular elements
+- **Large Rounding**: `rounded-2xl` - Used for modals and prominent containers
+
 ### State Colors
 
 #### Success

@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	const libraryId = sanitizeInteger(libraryIdParam);
 	const page = sanitizePositiveInteger(pageParam);
-	const pageSize = Math.min(sanitizePositiveInteger(pageSizeParam), 100);
+	const pageSize = Math.min(sanitizePositiveInteger(pageSizeParam), 10000);
 	const offset = (page - 1) * pageSize;
 
 	const library = db.prepare('SELECT id, folder_path FROM library WHERE id = ?').get(libraryId) as { id: number; folder_path: string } | undefined;
