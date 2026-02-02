@@ -1,0 +1,79 @@
+
+<!-- Restore Confirmation Dialog -->
+{#if showRestoreConfirm && backupToRestore}
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" 
+		onclick={cancelRestore}
+		onkeydown={(e) => e.key === 'Escape' && cancelRestore()}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="restore-backup-title"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<h3 id="restore-backup-title" class="text-lg font-semibold text-gray-900 dark:text-white">Restore Backup</h3>
+				<button onclick={cancelRestore} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-6 h-6" />
+				</button>
+			</div>
+			
+			<div class="p-6">
+				<p class="text-gray-900 dark:text-white">Restore from <strong>{formatDate(backupList.find(b => b.filename === backupToRestore)?.created || '')}</strong>?</p>
+				<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">This will replace your current database. Consider creating a backup first if you want to preserve the current state.</p>
+			</div>
+
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+				<button onclick={cancelRestore} class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600">
+					Cancel
+				</button>
+				<button 
+					onclick={confirmRestore} 
+					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+					disabled={restoreLoading}
+				>
+					{restoreLoading ? 'Restoring...' : 'Restore Backup'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Delete Confirmation Dialog -->
+{#if showDeleteConfirm && backupToDelete}
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" 
+		onclick={cancelDelete}
+		onkeydown={(e) => e.key === 'Escape' && cancelDelete()}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="delete-backup-title"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<h3 id="delete-backup-title" class="text-lg font-semibold text-gray-900 dark:text-white">Delete Backup</h3>
+				<button onclick={cancelDelete} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-6 h-6" />
+				</button>
+			</div>
+			
+			<div class="p-6">
+				<p class="text-gray-900 dark:text-white">Delete backup from <strong>{formatDate(backupList.find(b => b.filename === backupToDelete)?.created || '')}</strong>?</p>
+				<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">This action cannot be undone.</p>
+			</div>
+
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+				<button onclick={cancelDelete} class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600">
+					Cancel
+				</button>
+				<button 
+					onclick={confirmDelete} 
+					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-red-600 rounded-md hover:bg-red-700"
+				>
+					Delete Backup
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
