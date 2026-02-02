@@ -1,8 +1,15 @@
 <script lang="ts">
 	import { themeStore } from '$lib/stores/theme.svelte';
-	import { Sun, Moon, Check, Database, Download, Upload, AlertCircle, CheckCircle, Trash2, X } from 'lucide-svelte';
+	import { Sun, Moon, Check, Database, Download, Upload, AlertCircle, CheckCircle, Trash2, X, BarChart3, Activity } from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import StatisticsPanel from '$lib/components/StatisticsPanel.svelte';
+	import PerformancePanel from '$lib/components/PerformancePanel.svelte';
+
+	let libraryId = $derived.by(() => {
+		const parsed = parseInt($page.params.id || '0', 10);
+		return isNaN(parsed) ? 0 : parsed;
+	});
 
 	const handleThemeChange = (theme: 'light' | 'dark') => {
 		themeStore.set(theme);
@@ -23,6 +30,7 @@
 	let importLoading = $state(false);
 	let importMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 	let importFile = $state<File | null>(null);
+	let activeTab = $state<'general' | 'statistics' | 'performance'>('general');
 
 	const createBackup = async () => {
 		backupLoading = true;
@@ -312,12 +320,42 @@
 	};
 </script>
 
-<div class="max-w-4xl">
+<div class="max-w-6xl">
 	<div class="mb-8">
 		<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
 		<p class="mt-2 text-gray-600 dark:text-gray-400">Manage your application preferences</p>
 	</div>
 
+	<div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+		<nav class="flex gap-8">
+			<button
+				type="button"
+				onclick={() => activeTab = 'general'}
+				class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab === 'general' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
+			>
+				<Database class="w-4 h-4" />
+				General
+			</button>
+			<button
+				type="button"
+				onclick={() => activeTab = 'statistics'}
+				class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab === 'statistics' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
+			>
+				<BarChart3 class="w-4 h-4" />
+				Statistics
+			</button>
+			<button
+				type="button"
+				onclick={() => activeTab = 'performance'}
+				class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab === 'performance' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
+			>
+				<Activity class="w-4 h-4" />
+				Performance
+			</button>
+		</nav>
+	</div>
+
+	{#if activeTab === 'general'}
 	<div class="space-y-6">
 		<section class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
 			<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Appearance</h2>
@@ -539,6 +577,11 @@
 			</div>
 		</section>
 	</div>
+	{:else if activeTab === 'statistics'}
+		<StatisticsPanel currentLibraryId={libraryId} />
+	{:else if activeTab === 'performance'}
+		<PerformancePanel libraryId={libraryId} />
+	{/if}
 </div>
 
 <!-- Restore Confirmation Dialog -->

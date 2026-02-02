@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Media, Person } from '$lib/server/db';
 	import { basename } from '$lib/utils/path';
+	import { formatBytes, formatDateTime } from '$lib/utils/format';
 	import TagSelector from './TagSelector.svelte';
 	import CreditSelector from './CreditSelector.svelte';
 	import TitleEditor from './TitleEditor.svelte';
@@ -170,17 +171,6 @@
 	const hasPrevious = $derived(currentIndex !== undefined && currentIndex > 0);
 	const hasNext = $derived(currentIndex !== undefined && totalItems !== undefined && currentIndex < totalItems - 1);
 
-	const formatBytes = (bytes: number): string => {
-		if (bytes === 0) return '0 B';
-		const k = 1024;
-		const sizes = ['B', 'KB', 'MB', 'GB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-	};
-
-	const formatDate = (dateString: string): string => {
-		return new Date(dateString).toLocaleString();
-	};
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -313,12 +303,12 @@
 
 					<div>
 						<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Created</h4>
-						<p class="text-gray-900 dark:text-white text-sm">{formatDate(media.birthtime)}</p>
+						<p class="text-gray-900 dark:text-white text-sm">{formatDateTime(media.birthtime)}</p>
 					</div>
 
 					<div>
 						<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Added to Library</h4>
-						<p class="text-gray-900 dark:text-white text-sm">{formatDate(media.created_at)}</p>
+						<p class="text-gray-900 dark:text-white text-sm">{formatDateTime(media.created_at)}</p>
 					</div>
 
 					<div>

@@ -141,10 +141,10 @@ The application supports detailed credit attribution for media items:
 ### Phase 6: Advanced Features
 - [x] Advanced search and filtering with combined criteria
 - [x] Bulk operations with progress tracking
-- [ ] Database backup/restore functionality
-- [ ] Export/import functionality
-- [ ] Statistics and analytics
-- [ ] Performance monitoring for large libraries
+- [x] Database backup/restore functionality
+- [x] Export/import functionality
+- [x] Statistics and analytics
+- [x] Performance monitoring for large libraries
 
 ## Future Considerations
 

@@ -136,7 +136,7 @@
 		<div class="flex gap-2">
 			<select
 				bind:value={selectedPersonId}
-				class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				class="flex-1 pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 			>
 				<option value={null}>Select person...</option>
 				{#each availablePeople as person (person.id)}
