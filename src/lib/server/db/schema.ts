@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS media (
 	media_type TEXT NOT NULL CHECK(media_type IN ('image', 'video', 'animated')),
 	size INTEGER NOT NULL,
 	mtime TEXT NOT NULL,
+	birthtime TEXT NOT NULL DEFAULT (datetime('now')),
 	created_at TEXT NOT NULL DEFAULT (datetime('now')),
 	updated_at TEXT NOT NULL DEFAULT (datetime('now')),
 	FOREIGN KEY (library_id) REFERENCES library(id) ON DELETE CASCADE

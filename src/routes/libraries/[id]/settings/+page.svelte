@@ -22,6 +22,8 @@
 	let restoreLoading = $state(false);
 	let showRestoreConfirm = $state(false);
 	let backupToRestore = $state<string | null>(null);
+	let showMigrationWarning = $state(false);
+	let migrationInfo = $state<{ backupVersion: number; currentVersion: number; message: string } | null>(null);
 	let showDeleteConfirm = $state(false);
 	let backupToDelete = $state<string | null>(null);
 	let deleteLoading = $state(false);
@@ -96,28 +98,85 @@
 		loadBackupList();
 	});
 
-	const openRestoreConfirm = (filename: string) => {
+	const openRestoreConfirm = async (filename: string) => {
 		backupToRestore = filename;
-		showRestoreConfirm = true;
+		backupMessage = null;
+		
+		// Check if the backup requires migration
+		try {
+			const response = await fetch('/api/backup/check', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ backupFilename: filename })
+			});
+
+			if (!response.ok) {
+				let errorMessage = 'Failed to check backup';
+				try {
+					const error = await response.json();
+					errorMessage = error.message || errorMessage;
+				} catch {
+					errorMessage = `Server error: ${response.status} ${response.statusText}`;
+				}
+				throw new Error(errorMessage);
+			}
+
+			const result = await response.json();
+			
+			// If backup is newer than current version, show error
+			if (result.isNewer) {
+				backupMessage = {
+					type: 'error',
+					text: `Cannot restore: backup is from a newer version (${result.backupVersion}) than the current application (${result.currentVersion}). Please update the application first.`
+				};
+				backupToRestore = null;
+				return;
+			}
+			
+			// If backup requires migration, show migration warning
+			if (result.requiresMigration) {
+				migrationInfo = {
+					backupVersion: result.backupVersion,
+					currentVersion: result.currentVersion,
+					message: `This backup is from an older database version (${result.backupVersion}). The current application uses version ${result.currentVersion}. The backup will be automatically migrated after restore.`
+				};
+				showMigrationWarning = true;
+			} else {
+				// No migration needed, show normal restore confirmation
+				showRestoreConfirm = true;
+			}
+		} catch (error) {
+			backupMessage = {
+				type: 'error',
+				text: error instanceof Error ? error.message : 'Failed to check backup'
+			};
+			backupToRestore = null;
+		}
 	};
 
 	const cancelRestore = () => {
 		showRestoreConfirm = false;
+		showMigrationWarning = false;
 		backupToRestore = null;
+		migrationInfo = null;
 	};
 
-	const confirmRestore = async () => {
+	const confirmRestore = async (confirmMigration = false) => {
 		if (!backupToRestore) return;
 
 		restoreLoading = true;
 		backupMessage = null;
 		showRestoreConfirm = false;
+		showMigrationWarning = false;
 		
 		try {
 			const response = await fetch('/api/backup/restore', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ backupFilename: backupToRestore })
+				body: JSON.stringify({ 
+					backupFilename: backupToRestore,
+					confirmMigration 
+				})
 			});
 
 			if (!response.ok) {
@@ -132,6 +191,19 @@
 			}
 
 			const result = await response.json();
+		
+		// If server asks for confirmation, show migration warning
+		if (result.requiresConfirmation) {
+			migrationInfo = {
+				backupVersion: result.backupVersion,
+				currentVersion: result.currentVersion,
+				message: result.message
+			};
+			showMigrationWarning = true;
+			restoreLoading = false; // Reset loading state before early return
+			return;
+		}
+			
 			backupMessage = {
 				type: 'success',
 				text: result.message
@@ -144,6 +216,7 @@
 		} finally {
 			restoreLoading = false;
 			backupToRestore = null;
+			migrationInfo = null;
 		}
 	};
 
@@ -613,11 +686,68 @@
 					Cancel
 				</button>
 				<button 
-					onclick={confirmRestore} 
+					onclick={() => confirmRestore(false)} 
 					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
 					disabled={restoreLoading}
 				>
 					{restoreLoading ? 'Restoring...' : 'Restore Backup'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Migration Warning Dialog -->
+{#if showMigrationWarning && backupToRestore && migrationInfo}
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" 
+		onclick={cancelRestore}
+		onkeydown={(e) => e.key === 'Escape' && cancelRestore()}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="migration-warning-title"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-2xl" onclick={(e) => e.stopPropagation()} role="document">
+			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<h3 id="migration-warning-title" class="text-lg font-semibold text-gray-900 dark:text-white">Database Migration Required</h3>
+				<button onclick={cancelRestore} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+					<X class="w-6 h-6" />
+				</button>
+			</div>
+			
+			<div class="p-6">
+				<div class="flex items-start gap-3 p-3 mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+					<AlertCircle class="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+					<div class="text-sm text-yellow-800 dark:text-yellow-200">
+						<p class="font-medium mb-1">Schema Version Mismatch</p>
+						<p>{migrationInfo.message}</p>
+					</div>
+				</div>
+				
+				<div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+					<p><strong>Backup version:</strong> {migrationInfo.backupVersion}</p>
+					<p><strong>Current version:</strong> {migrationInfo.currentVersion}</p>
+				</div>
+				
+				<p class="mt-4 text-sm text-gray-900 dark:text-white">
+					The backup will be automatically migrated to the current schema version after restore. This process is safe and automatic.
+				</p>
+				<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+					Consider creating a backup of your current database before proceeding.
+				</p>
+			</div>
+
+			<div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+				<button onclick={cancelRestore} class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600">
+					Cancel
+				</button>
+				<button 
+					onclick={() => confirmRestore(true)} 
+					class="px-4 py-2 text-sm font-medium text-white transition-colors bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+					disabled={restoreLoading}
+				>
+					{restoreLoading ? 'Restoring & Migrating...' : 'Restore & Migrate'}
 				</button>
 			</div>
 		</div>
