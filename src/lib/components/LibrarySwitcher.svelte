@@ -4,6 +4,7 @@
 	import FolderBrowser from './FolderBrowser.svelte';
 	import type { Library } from '$lib/server/db';
 	import { Library as LibraryIcon, ChevronDown, Check, RefreshCw, Plus, X } from 'lucide-svelte';
+	import { fetchLibraries } from '$lib/utils/api';
 
 	interface Props {
 		libraryId?: number | null;
@@ -43,13 +44,7 @@
 		loading = true;
 		error = null;
 		try {
-			const response = await fetch('/api/libraries');
-			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.message || 'Failed to load libraries');
-			}
-			const data = await response.json();
-			libraries = data.libraries;
+			libraries = await fetchLibraries();
 			// Update current library if we have a libraryId
 			if (libraryId) {
 				currentLibrary = libraries.find(lib => lib.id === libraryId) || null;

@@ -8,6 +8,7 @@
 	import MediaFilters from '$lib/components/MediaFilters.svelte';
 	import MediaDetailModal from '$lib/components/MediaDetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import { fetchPersonLibraries } from '$lib/utils/api';
 
 	let person = $state<Person | null>(null);
 	let profile = $state<ArtistProfile | PerformerProfile | null>(null);
@@ -65,10 +66,7 @@
 	const loadLibraries = async () => {
 		if (!personId) return;
 		try {
-			const response = await fetch(`/api/people/${personId}/libraries`);
-			if (response.ok) {
-				libraries = await response.json();
-			}
+			libraries = await fetchPersonLibraries(personId);
 		} catch (err) {
 			console.error('Failed to load libraries:', err);
 		}

@@ -3,6 +3,7 @@
 	import type { LibraryStatistics } from '../../routes/api/statistics/+server';
 	import type { Library } from '$lib/server/db';
 	import { formatBytes, formatDate } from '$lib/utils/format';
+	import { fetchLibraries } from '$lib/utils/api';
 
 	interface StatisticsPanelProps {
 		currentLibraryId?: number | null;
@@ -27,12 +28,7 @@
 
 	const loadLibraries = async () => {
 		try {
-			const response = await fetch('/api/libraries');
-			if (!response.ok) {
-				throw new Error('Failed to load libraries');
-			}
-			const result = await response.json();
-			libraries = result.libraries;
+			libraries = await fetchLibraries();
 		} catch (err) {
 			console.error('Failed to load libraries:', err);
 		}

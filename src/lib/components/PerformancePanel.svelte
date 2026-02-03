@@ -3,6 +3,7 @@
 	import type { PerformanceMetrics } from '../../routes/api/performance/+server';
 	import type { Library } from '$lib/server/db';
 	import { formatBytes } from '$lib/utils/format';
+	import { fetchLibraries } from '$lib/utils/api';
 
 	interface PerformancePanelProps {
 		libraryId?: number | null;
@@ -27,12 +28,7 @@
 
 	const loadLibraries = async () => {
 		try {
-			const response = await fetch('/api/libraries');
-			if (!response.ok) {
-				throw new Error('Failed to load libraries');
-			}
-			const result = await response.json();
-			libraries = result.libraries;
+			libraries = await fetchLibraries();
 		} catch (err) {
 			console.error('Failed to load libraries:', err);
 		}

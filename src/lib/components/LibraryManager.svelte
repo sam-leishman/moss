@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
-	import FolderBrowser from './FolderBrowser.svelte';
+	import { Library as LibraryIcon, Plus, Trash2, FolderOpen, Scan, CheckCircle, X, AlertTriangle } from 'lucide-svelte';
 	import type { Library } from '$lib/server/db';
-	import { Trash2, X, AlertTriangle, FolderOpen } from 'lucide-svelte';
+	import { fetchLibraries } from '$lib/utils/api';
 
 	interface Props {
 		onLibraryChange?: (library: Library | null) => void;

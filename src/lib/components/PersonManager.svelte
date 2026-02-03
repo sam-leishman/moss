@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Plus, Trash2, Pencil, User, Globe } from 'lucide-svelte';
 	import type { Person } from '$lib/server/db';
+	import { fetchLibraries } from '$lib/utils/api';
 
 	interface Props {
 		libraryId?: number;
@@ -9,6 +10,7 @@
 	let { libraryId }: Props = $props();
 
 	let people = $state<Person[]>([]);
+	let libraries = $state<Map<number, string>>(new Map());
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let showCreateModal = $state(false);
@@ -32,6 +34,19 @@
 			const response = await fetch(url);
 			if (!response.ok) throw new Error('Failed to fetch people');
 			people = await response.json();
+			
+			// Load library names for library-specific people
+			const libraryIds = new Set(people.filter(p => p.library_id !== null).map(p => p.library_id as number));
+			if (libraryIds.size > 0) {
+				const allLibraries = await fetchLibraries();
+				const libMap = new Map<number, string>();
+				for (const lib of allLibraries) {
+					if (libraryIds.has(lib.id)) {
+						libMap.set(lib.id, lib.name);
+					}
+				}
+				libraries = libMap;
+			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load people';
 		} finally {
@@ -231,14 +246,16 @@
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
 		<h2 class="text-2xl font-bold text-gray-900 dark:text-white">People</h2>
-		<button
-			type="button"
-			onclick={openCreateModal}
-			class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-		>
-			<Plus class="w-4 h-4" />
-			Add Person
-		</button>
+		{#if libraryId !== undefined}
+			<button
+				type="button"
+				onclick={openCreateModal}
+				class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+			>
+				<Plus class="w-4 h-4" />
+				Add Person
+			</button>
+		{/if}
 	</div>
 
 	{#if error}
@@ -256,6 +273,11 @@
 	{:else}
 		{@const globalPeople = people.filter(p => p.is_global === 1)}
 		{@const libraryPeople = people.filter(p => p.is_global === 0)}
+		{@const peopleByLibrary = new Map<number, Person[]>()}
+		{#each libraryPeople as person}
+			{@const libId = person.library_id as number}
+			{@const _ = peopleByLibrary.set(libId, [...(peopleByLibrary.get(libId) || []), person])}
+		{/each}
 		
 		<div class="space-y-6">
 			{#if globalPeople.length > 0}
@@ -302,45 +324,53 @@
 				</div>
 			{/if}
 			
-			{#if libraryPeople.length > 0}
-				<div>
-					<h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Library-Specific People ({libraryPeople.length})</h3>
-					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-						{#each libraryPeople as person (person.id)}
-							<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
-								<div class="flex items-start justify-between">
-									<a href={libraryId ? `/libraries/${libraryId}/people/${person.id}` : `/people/${person.id}`} class="flex items-center gap-3 flex-1 min-w-0 group">
-										<div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-											<User class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+			{#if peopleByLibrary.size > 0}
+				{#each Array.from(peopleByLibrary.entries()).sort((a, b) => {
+					const nameA = libraries.get(a[0]) || '';
+					const nameB = libraries.get(b[0]) || '';
+					return nameA.localeCompare(nameB);
+				}) as [libId, libPeople] (libId)}
+					<div>
+						<h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
+							{libraries.get(libId) || `Library ${libId}`} ({libPeople.length})
+						</h3>
+						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+							{#each libPeople as person (person.id)}
+								<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
+									<div class="flex items-start justify-between">
+										<a href={libraryId ? `/libraries/${libraryId}/people/${person.id}` : `/people/${person.id}`} class="flex items-center gap-3 flex-1 min-w-0 group">
+											<div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+												<User class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+											</div>
+											<div class="flex-1 min-w-0">
+												<h3 class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{person.name}</h3>
+												<p class="text-sm text-gray-500 dark:text-gray-400 capitalize">{person.role}</p>
+											</div>
+										</a>
+										<div class="flex gap-2">
+											<button
+												type="button"
+												onclick={() => startEdit(person)}
+												class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+												aria-label="Edit person"
+											>
+												<Pencil class="w-4 h-4" />
+											</button>
+											<button
+												type="button"
+												onclick={() => deletePerson(person.id)}
+												class="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+												aria-label="Delete person"
+											>
+												<Trash2 class="w-4 h-4" />
+											</button>
 										</div>
-										<div class="flex-1 min-w-0">
-											<h3 class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{person.name}</h3>
-											<p class="text-sm text-gray-500 dark:text-gray-400 capitalize">{person.role}</p>
-										</div>
-									</a>
-									<div class="flex gap-2">
-										<button
-											type="button"
-											onclick={() => startEdit(person)}
-											class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-											aria-label="Edit person"
-										>
-											<Pencil class="w-4 h-4" />
-										</button>
-										<button
-											type="button"
-											onclick={() => deletePerson(person.id)}
-											class="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-											aria-label="Delete person"
-										>
-											<Trash2 class="w-4 h-4" />
-										</button>
 									</div>
 								</div>
-							</div>
-						{/each}
+							{/each}
+						</div>
 					</div>
-				</div>
+				{/each}
 			{/if}
 		</div>
 	{/if}
