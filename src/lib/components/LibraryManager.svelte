@@ -5,6 +5,7 @@
 	import type { Library } from '$lib/server/db';
 	import { fetchLibraries } from '$lib/utils/api';
 	import { setLastLibraryId } from '$lib/utils/storage';
+	import FolderBrowser from './FolderBrowser.svelte';
 
 	interface Props {
 		onLibraryChange?: (library: Library | null) => void;
@@ -30,6 +31,20 @@
 
 	onMount(() => {
 		loadLibraries();
+		
+		// Listen for library update events
+		const handleLibraryUpdate = (event: CustomEvent<{ library: Library }>) => {
+			const { library } = event.detail;
+			
+			// Update the libraries array with the updated library
+			libraries = libraries.map(lib => lib.id === library.id ? library : lib);
+		};
+		
+		window.addEventListener('libraryUpdated', handleLibraryUpdate as EventListener);
+		
+		return () => {
+			window.removeEventListener('libraryUpdated', handleLibraryUpdate as EventListener);
+		};
 	});
 
 	async function loadLibraries() {
@@ -202,6 +217,12 @@
 
 			const data = await response.json();
 			libraries = libraries.map(lib => lib.id === data.library.id ? data.library : lib);
+			
+			// Dispatch custom event to notify other components
+			window.dispatchEvent(new CustomEvent('libraryUpdated', { 
+				detail: { library: data.library } 
+			}));
+			
 			await invalidateAll();
 			successMessage = `Library relocated successfully to ${getDisplayPath(data.library.folder_path)}`;
 			setTimeout(() => successMessage = null, 5000);

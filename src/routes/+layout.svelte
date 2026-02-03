@@ -3,7 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import LibrarySwitcher from '$lib/components/LibrarySwitcher.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
-	import { Menu } from 'lucide-svelte';
+	import { Menu, Settings } from 'lucide-svelte';
 	import { page } from '$app/stores';
 
 	let { children } = $props();
@@ -23,6 +23,9 @@
 		const match = $page.url.pathname.match(/^\/libraries\/(\d+)/);
 		return match ? parseInt(match[1]) : null;
 	});
+
+	// Check if we're on settings page
+	const isSettingsPage = $derived($page.url.pathname.startsWith('/settings'));
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -41,7 +44,16 @@
 				</button>
 				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">XView</h1>
 			</div>
-			<LibrarySwitcher libraryId={currentLibrary} />
+			<div class="flex items-center gap-3">
+				<a
+					href="/settings/general"
+					class="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors {isSettingsPage ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white' : ''}"
+					aria-label="Settings"
+				>
+					<Settings class="w-5 h-5" />
+				</a>
+				<LibrarySwitcher libraryId={currentLibrary} />
+			</div>
 		</div>
 	</header>
 

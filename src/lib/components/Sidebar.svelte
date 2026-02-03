@@ -40,12 +40,6 @@
 			label: 'Home',
 			icon: Home,
 			isActive: $page.url.pathname === '/'
-		},
-		{
-			href: '/settings',
-			label: 'Settings',
-			icon: Settings,
-			isActive: isActive('/settings')
 		}
 	]);
 

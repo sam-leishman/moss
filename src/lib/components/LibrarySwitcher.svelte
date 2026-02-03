@@ -30,6 +30,25 @@
 
 	onMount(() => {
 		loadLibraries();
+		
+		// Listen for library update events
+		const handleLibraryUpdate = (event: CustomEvent<{ library: Library }>) => {
+			const { library } = event.detail;
+			
+			// Update the libraries array with the updated library
+			libraries = libraries.map(lib => lib.id === library.id ? library : lib);
+			
+			// Update current library if it's the one that was updated
+			if (currentLibrary?.id === library.id) {
+				currentLibrary = library;
+			}
+		};
+		
+		window.addEventListener('libraryUpdated', handleLibraryUpdate as EventListener);
+		
+		return () => {
+			window.removeEventListener('libraryUpdated', handleLibraryUpdate as EventListener);
+		};
 	});
 
 	// Load current library data when libraryId changes

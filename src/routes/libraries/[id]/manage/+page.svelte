@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { RefreshCw, FolderOpen, Trash2, AlertTriangle, X, Info } from 'lucide-svelte';
+	import { RefreshCw, FolderOpen, Trash2, AlertTriangle, X, Info, Edit2, Check, Loader2 } from 'lucide-svelte';
 	import FolderBrowser from '$lib/components/FolderBrowser.svelte';
 	import type { PageData } from './$types';
 	import { clearLastLibraryId } from '$lib/utils/storage';
@@ -16,6 +16,9 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
+	let isEditingName = $state(false);
+	let editedName = $state('');
+	let isSavingName = $state(false);
 
 	function getDisplayPath(fullPath: string): string {
 		if (fullPath.includes('test-media')) {
@@ -110,6 +113,15 @@
 			}
 
 			const result = await response.json();
+			
+			// Update local library data
+			data.library = result.library;
+			
+			// Dispatch custom event to notify other components
+			window.dispatchEvent(new CustomEvent('libraryUpdated', { 
+				detail: { library: result.library } 
+			}));
+			
 			await invalidateAll();
 			successMessage = `Library relocated successfully to ${getDisplayPath(result.library.folder_path)}`;
 			setTimeout(() => successMessage = null, 5000);
@@ -153,6 +165,76 @@
 			error = err instanceof Error ? err.message : 'Failed to delete library';
 		} finally {
 			loading = false;
+		}
+	}
+
+	function startEditingName() {
+		editedName = data.library.name;
+		isEditingName = true;
+		error = null;
+	}
+
+	function cancelEditingName() {
+		isEditingName = false;
+		editedName = '';
+		error = null;
+	}
+
+	async function saveLibraryName() {
+		const trimmedName = editedName.trim();
+		if (!trimmedName) {
+			error = 'Library name cannot be empty';
+			return;
+		}
+
+		if (trimmedName === data.library.name) {
+			cancelEditingName();
+			return;
+		}
+
+		isSavingName = true;
+		error = null;
+
+		try {
+			const response = await fetch(`/api/libraries/${data.library.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: trimmedName })
+			});
+
+			if (!response.ok) {
+				const result = await response.json();
+				throw new Error(result.message || 'Failed to update library name');
+			}
+
+			const result = await response.json();
+			
+			// Update local library data
+			data.library = result.library;
+			
+			// Dispatch custom event to notify other components
+			window.dispatchEvent(new CustomEvent('libraryUpdated', { 
+				detail: { library: result.library } 
+			}));
+			
+			await invalidateAll();
+			successMessage = `Library name updated successfully to "${result.library.name}"`;
+			setTimeout(() => successMessage = null, 5000);
+			isEditingName = false;
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to update library name';
+		} finally {
+			isSavingName = false;
+		}
+	}
+
+	function handleNameKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			saveLibraryName();
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			cancelEditingName();
 		}
 	}
 </script>
@@ -237,7 +319,52 @@
 		<div class="px-6 py-4 space-y-4">
 			<div>
 				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-				<p class="text-gray-900 dark:text-white font-medium">{data.library.name}</p>
+				{#if isEditingName}
+					<div class="flex items-center gap-2">
+						<input
+							type="text"
+							bind:value={editedName}
+							onkeydown={handleNameKeydown}
+							disabled={isSavingName}
+							placeholder="Enter library name"
+							class="flex-1 px-3 py-2 rounded-md text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+						/>
+						<button
+							type="button"
+							onclick={saveLibraryName}
+							disabled={isSavingName || !editedName.trim()}
+							class="flex items-center gap-1 px-3 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{#if isSavingName}
+								<Loader2 class="w-4 h-4 animate-spin" />
+							{:else}
+								<Check class="w-4 h-4" />
+							{/if}
+							{isSavingName ? 'Saving...' : 'Save'}
+						</button>
+						<button
+							type="button"
+							onclick={cancelEditingName}
+							disabled={isSavingName}
+							class="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							<X class="w-4 h-4" />
+							Cancel
+						</button>
+					</div>
+				{:else}
+					<div class="flex items-center justify-between">
+						<p class="text-gray-900 dark:text-white font-medium">{data.library.name}</p>
+						<button
+							type="button"
+							onclick={startEditingName}
+							class="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+						>
+							<Edit2 class="w-4 h-4" />
+							Edit
+						</button>
+					</div>
+				{/if}
 			</div>
 			<div>
 				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Folder Path</label>
