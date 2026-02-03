@@ -1,25 +1,55 @@
 <script lang="ts">
 	import { Activity, Database, Zap, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-svelte';
 	import type { PerformanceMetrics } from '../../routes/api/performance/+server';
+	import type { Library } from '$lib/server/db';
 	import { formatBytes } from '$lib/utils/format';
 
 	interface PerformancePanelProps {
-		libraryId: number;
+		libraryId?: number | null;
 	}
 
-	let { libraryId }: PerformancePanelProps = $props();
+	let { libraryId = null }: PerformancePanelProps = $props();
 
 	let metrics = $state<PerformanceMetrics | null>(null);
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
+	let libraries = $state<Library[]>([]);
+	let selectedLibraryId = $state<number | null>(null);
 	let previousLibraryId = $state<number | null>(null);
+	let initialized = $state(false);
+
+	$effect(() => {
+		if (!initialized && libraryId !== undefined) {
+			selectedLibraryId = libraryId;
+			initialized = true;
+		}
+	});
+
+	const loadLibraries = async () => {
+		try {
+			const response = await fetch('/api/libraries');
+			if (!response.ok) {
+				throw new Error('Failed to load libraries');
+			}
+			const result = await response.json();
+			libraries = result.libraries;
+		} catch (err) {
+			console.error('Failed to load libraries:', err);
+		}
+	};
 
 	const loadMetrics = async () => {
+		if (!selectedLibraryId) {
+			error = 'Please select a library to view performance metrics';
+			metrics = null;
+			return;
+		}
+
 		isLoading = true;
 		error = null;
 
 		try {
-			const response = await fetch(`/api/performance?library_id=${libraryId}`);
+			const response = await fetch(`/api/performance?library_id=${selectedLibraryId}`);
 			
 			if (!response.ok) {
 				throw new Error('Failed to load performance metrics');
@@ -36,16 +66,14 @@
 	};
 
 	$effect(() => {
-		// Track libraryId changes and validate before loading
-		if (libraryId !== previousLibraryId) {
-			previousLibraryId = libraryId;
-			
-			// Only load if libraryId is valid (greater than 0)
-			if (libraryId > 0) {
+		loadLibraries();
+	});
+
+	$effect(() => {
+		if (selectedLibraryId !== previousLibraryId) {
+			previousLibraryId = selectedLibraryId;
+			if (selectedLibraryId) {
 				loadMetrics();
-			} else {
-				error = 'Invalid library ID';
-				metrics = null;
 			}
 		}
 	});
@@ -85,20 +113,44 @@
 				Retry
 			</button>
 		</div>
-	{:else if metrics}
-		<div class="flex items-center justify-between">
+	{:else}
+		<div class="flex items-center justify-between mb-6">
 			<div>
 				<h2 class="text-2xl font-bold text-gray-900 dark:text-white">Performance Monitoring</h2>
-				<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{metrics.libraryName}</p>
+				{#if metrics}
+					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{metrics.libraryName}</p>
+				{/if}
 			</div>
-			<button
-				type="button"
-				onclick={loadMetrics}
-				class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-			>
-				Refresh
-			</button>
+			<div class="flex items-center gap-3">
+				<select
+					bind:value={selectedLibraryId}
+					class="pl-3 pr-10 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				>
+					<option value={null}>Select a library</option>
+					{#each libraries as library}
+						<option value={library.id}>{library.name}</option>
+					{/each}
+				</select>
+				<button
+					type="button"
+					onclick={loadMetrics}
+					disabled={!selectedLibraryId}
+					class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					Refresh
+				</button>
+			</div>
 		</div>
+
+		{#if !metrics && !error}
+			<div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-8 text-center">
+				<Activity class="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-3" />
+				<p class="text-blue-900 dark:text-blue-100 font-medium">Select a library to view performance metrics</p>
+				<p class="text-sm text-blue-700 dark:text-blue-300 mt-1">Choose a library from the dropdown above</p>
+			</div>
+		{/if}
+
+		{#if metrics}
 
 		{#if metrics.recommendations.length > 0}
 			<div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -276,5 +328,6 @@
 				{/each}
 			</div>
 		</div>
+		{/if}
 	{/if}
 </div>

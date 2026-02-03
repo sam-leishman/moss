@@ -5,10 +5,10 @@
 	import { formatBytes, formatDate } from '$lib/utils/format';
 
 	interface StatisticsPanelProps {
-		currentLibraryId?: number;
+		currentLibraryId?: number | null;
 	}
 
-	let { currentLibraryId }: StatisticsPanelProps = $props();
+	let { currentLibraryId = null }: StatisticsPanelProps = $props();
 
 	let statistics = $state<LibraryStatistics | null>(null);
 	let isLoading = $state(false);
@@ -16,11 +16,12 @@
 	let libraries = $state<Library[]>([]);
 	let selectedLibraryId = $state<number | null>(null);
 	let previousLibraryId = $state<number | null | undefined>(undefined);
+	let initialized = $state(false);
 
-	// Initialize selectedLibraryId from prop
 	$effect(() => {
-		if (currentLibraryId !== undefined && selectedLibraryId === null && previousLibraryId === undefined) {
+		if (!initialized && currentLibraryId !== undefined) {
 			selectedLibraryId = currentLibraryId;
+			initialized = true;
 		}
 	});
 

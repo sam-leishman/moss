@@ -15,7 +15,7 @@
 	};
 
 	// Define known sub-routes for cleaner active state logic
-	const subRoutes = ['/tags', '/people', '/settings'];
+	const subRoutes = ['/tags', '/people'];
 	
 	const isMediaActive = $derived(() => {
 		if (!libraryId) return false;
@@ -40,6 +40,12 @@
 			label: 'Home',
 			icon: Home,
 			isActive: $page.url.pathname === '/'
+		},
+		{
+			href: '/settings',
+			label: 'Settings',
+			icon: Settings,
+			isActive: isActive('/settings')
 		}
 	]);
 
@@ -62,12 +68,6 @@
 			label: 'People',
 			icon: Users,
 			isActive: isActive(`/libraries/${libraryId}/people`)
-		},
-		{
-			href: `/libraries/${libraryId}/settings`,
-			label: 'Settings',
-			icon: Settings,
-			isActive: isActive(`/libraries/${libraryId}/settings`)
 		}
 	] : []);
 </script>

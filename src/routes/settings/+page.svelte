@@ -1,15 +1,9 @@
 <script lang="ts">
 	import { themeStore } from '$lib/stores/theme.svelte';
 	import { Sun, Moon, Check, Database, Download, Upload, AlertCircle, CheckCircle, Trash2, X, BarChart3, Activity } from 'lucide-svelte';
-	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import StatisticsPanel from '$lib/components/StatisticsPanel.svelte';
 	import PerformancePanel from '$lib/components/PerformancePanel.svelte';
-
-	let libraryId = $derived.by(() => {
-		const parsed = parseInt($page.params.id || '0', 10);
-		return isNaN(parsed) ? 0 : parsed;
-	});
 
 	const handleThemeChange = (theme: 'light' | 'dark') => {
 		themeStore.set(theme);
@@ -60,7 +54,6 @@
 				text: `Backup created successfully: ${result.backupPath.split('/').pop()}`
 			};
 			
-			// Reload backup list
 			await loadBackupList();
 		} catch (error) {
 			backupMessage = {
@@ -102,7 +95,6 @@
 		backupToRestore = filename;
 		backupMessage = null;
 		
-		// Check if the backup requires migration
 		try {
 			const response = await fetch('/api/backup/check', {
 				method: 'POST',
@@ -123,7 +115,6 @@
 
 			const result = await response.json();
 			
-			// If backup is newer than current version, show error
 			if (result.isNewer) {
 				backupMessage = {
 					type: 'error',
@@ -133,7 +124,6 @@
 				return;
 			}
 			
-			// If backup requires migration, show migration warning
 			if (result.requiresMigration) {
 				migrationInfo = {
 					backupVersion: result.backupVersion,
@@ -142,7 +132,6 @@
 				};
 				showMigrationWarning = true;
 			} else {
-				// No migration needed, show normal restore confirmation
 				showRestoreConfirm = true;
 			}
 		} catch (error) {
@@ -192,7 +181,6 @@
 
 			const result = await response.json();
 		
-		// If server asks for confirmation, show migration warning
 		if (result.requiresConfirmation) {
 			migrationInfo = {
 				backupVersion: result.backupVersion,
@@ -200,7 +188,7 @@
 				message: result.message
 			};
 			showMigrationWarning = true;
-			restoreLoading = false; // Reset loading state before early return
+			restoreLoading = false;
 			return;
 		}
 			
@@ -271,7 +259,6 @@
 				text: 'Backup deleted successfully'
 			};
 			
-			// Reload backup list
 			await loadBackupList();
 		} catch (error) {
 			backupMessage = {
@@ -284,16 +271,13 @@
 		}
 	};
 
-	const exportData = async (librarySpecific: boolean) => {
+	const exportData = async () => {
 		exportLoading = true;
 		exportMessage = null;
 		
 		let downloadUrl: string | null = null;
 		try {
-			const libraryId = librarySpecific ? $page.params.id : null;
-			const url = libraryId ? `/api/export?library_id=${libraryId}` : '/api/export';
-			
-			const response = await fetch(url);
+			const response = await fetch('/api/export');
 
 			if (!response.ok) {
 				let errorMessage = 'Failed to export data';
@@ -311,7 +295,7 @@
 			downloadUrl = URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = downloadUrl;
-			a.download = `xview-export-${librarySpecific ? 'library-' + libraryId + '-' : ''}${new Date().toISOString().split('T')[0]}.json`;
+			a.download = `xview-export-${new Date().toISOString().split('T')[0]}.json`;
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
@@ -393,43 +377,44 @@
 	};
 </script>
 
-<div class="max-w-6xl">
-	<div class="mb-8">
-		<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
-		<p class="mt-2 text-gray-600 dark:text-gray-400">Manage your application preferences</p>
-	</div>
+<div class="px-6 py-6">
+	<div class="max-w-6xl">
+		<div class="mb-8">
+			<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+			<p class="mt-2 text-gray-600 dark:text-gray-400">Manage your application preferences</p>
+		</div>
 
-	<div class="border-b border-gray-200 dark:border-gray-700 mb-6">
-		<nav class="flex gap-8">
-			<button
-				type="button"
-				onclick={() => activeTab = 'general'}
-				class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab === 'general' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
-			>
-				<Database class="w-4 h-4" />
-				General
-			</button>
-			<button
-				type="button"
-				onclick={() => activeTab = 'statistics'}
-				class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab === 'statistics' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
-			>
-				<BarChart3 class="w-4 h-4" />
-				Statistics
-			</button>
-			<button
-				type="button"
-				onclick={() => activeTab = 'performance'}
-				class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab === 'performance' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
-			>
-				<Activity class="w-4 h-4" />
-				Performance
-			</button>
-		</nav>
-	</div>
+		<div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+			<nav class="flex gap-8">
+				<button
+					type="button"
+					onclick={() => activeTab = 'general'}
+					class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab === 'general' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
+				>
+					<Database class="w-4 h-4" />
+					General
+				</button>
+				<button
+					type="button"
+					onclick={() => activeTab = 'statistics'}
+					class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab === 'statistics' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
+				>
+					<BarChart3 class="w-4 h-4" />
+					Statistics
+				</button>
+				<button
+					type="button"
+					onclick={() => activeTab = 'performance'}
+					class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab === 'performance' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
+				>
+					<Activity class="w-4 h-4" />
+					Performance
+				</button>
+			</nav>
+		</div>
 
-	{#if activeTab === 'general'}
-	<div class="space-y-6">
+		{#if activeTab === 'general'}
+		<div class="space-y-6">
 		<section class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
 			<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Appearance</h2>
 			
@@ -586,23 +571,14 @@
 					</div>
 				{/if}
 				
-				<div class="flex flex-wrap gap-3">
+				<div>
 					<button
 						type="button"
-						onclick={() => exportData(false)}
+						onclick={exportData}
 						disabled={exportLoading}
 						class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 					>
 						{exportLoading ? 'Exporting...' : 'Export All Data'}
-					</button>
-
-					<button
-						type="button"
-						onclick={() => exportData(true)}
-						disabled={exportLoading}
-						class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-					>
-						Export This Library
 					</button>
 				</div>
 
@@ -649,12 +625,13 @@
 				</div>
 			</div>
 		</section>
+		</div>
+		{:else if activeTab === 'statistics'}
+			<StatisticsPanel />
+		{:else if activeTab === 'performance'}
+			<PerformancePanel />
+		{/if}
 	</div>
-	{:else if activeTab === 'statistics'}
-		<StatisticsPanel currentLibraryId={libraryId} />
-	{:else if activeTab === 'performance'}
-		<PerformancePanel libraryId={libraryId} />
-	{/if}
 </div>
 
 <!-- Restore Confirmation Dialog -->
