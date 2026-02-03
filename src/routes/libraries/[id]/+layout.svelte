@@ -1,13 +1,8 @@
 <script lang="ts">
-	import { AlertTriangle, ArrowLeft } from 'lucide-svelte';
-	import { goto } from '$app/navigation';
+	import { AlertTriangle, Wrench } from 'lucide-svelte';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
-
-	const goToLibraries = () => {
-		goto('/');
-	};
 </script>
 
 {#if data.library.path_status === 'missing' || data.library.path_status === 'error'}
@@ -26,14 +21,13 @@
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
-						<button
-							type="button"
-							onclick={goToLibraries}
+						<a
+							href="/libraries/{data.library.id}/manage"
 							class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-amber-900 dark:text-amber-200 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded-md hover:bg-amber-50 dark:hover:bg-gray-700 transition-colors"
 						>
-							<ArrowLeft class="w-4 h-4" />
-							<span>Manage Libraries</span>
-						</button>
+							<Wrench class="w-4 h-4" />
+							<span>Manage Library</span>
+						</a>
 					</div>
 				</div>
 			</div>

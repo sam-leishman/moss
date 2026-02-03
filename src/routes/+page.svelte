@@ -3,9 +3,11 @@
 	import PersonManager from '$lib/components/PersonManager.svelte';
 	import { goto } from '$app/navigation';
 	import type { Library } from '$lib/server/db';
+	import { setLastLibraryId } from '$lib/utils/storage';
 
 	function handleLibraryChange(library: Library | null) {
 		if (library) {
+			setLastLibraryId(library.id);
 			goto(`/libraries/${library.id}`);
 		}
 	}

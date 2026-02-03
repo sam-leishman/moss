@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Image, Tag, Users, Settings, Home } from 'lucide-svelte';
+	import { Image, Tag, Users, Settings, Home, Wrench } from 'lucide-svelte';
 
 	interface SidebarProps {
 		libraryId: number | null;
@@ -15,7 +15,7 @@
 	};
 
 	// Define known sub-routes for cleaner active state logic
-	const subRoutes = ['/tags', '/people'];
+	const subRoutes = ['/tags', '/people', '/manage'];
 	
 	const isMediaActive = $derived(() => {
 		if (!libraryId) return false;
@@ -68,6 +68,12 @@
 			label: 'People',
 			icon: Users,
 			isActive: isActive(`/libraries/${libraryId}/people`)
+		},
+		{
+			href: `/libraries/${libraryId}/manage`,
+			label: 'Manage',
+			icon: Wrench,
+			isActive: isActive(`/libraries/${libraryId}/manage`)
 		}
 	] : []);
 </script>

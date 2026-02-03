@@ -4,6 +4,7 @@
 	import { Library as LibraryIcon, Plus, Trash2, FolderOpen, Scan, CheckCircle, X, AlertTriangle } from 'lucide-svelte';
 	import type { Library } from '$lib/server/db';
 	import { fetchLibraries } from '$lib/utils/api';
+	import { setLastLibraryId } from '$lib/utils/storage';
 
 	interface Props {
 		onLibraryChange?: (library: Library | null) => void;
@@ -50,6 +51,7 @@
 	}
 
 	function selectLibrary(library: Library) {
+		setLastLibraryId(library.id);
 		onLibraryChange?.(library);
 	}
 

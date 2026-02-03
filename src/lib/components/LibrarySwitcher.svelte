@@ -5,6 +5,7 @@
 	import type { Library } from '$lib/server/db';
 	import { Library as LibraryIcon, ChevronDown, Check, RefreshCw, Plus, X } from 'lucide-svelte';
 	import { fetchLibraries } from '$lib/utils/api';
+	import { setLastLibraryId } from '$lib/utils/storage';
 
 	interface Props {
 		libraryId?: number | null;
@@ -58,6 +59,7 @@
 
 	function selectLibrary(library: Library) {
 		showDropdown = false;
+		setLastLibraryId(library.id);
 		goto(`/libraries/${library.id}`);
 	}
 
@@ -107,6 +109,7 @@
 			const data = await response.json();
 			libraries = [data.library, ...libraries];
 			closeCreateModal();
+			setLastLibraryId(data.library.id);
 			goto(`/libraries/${data.library.id}`);
 			
 			// Show scan results
