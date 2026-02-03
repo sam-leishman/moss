@@ -6,10 +6,12 @@
 	import { Library as LibraryIcon, ChevronDown, Check, RefreshCw, Plus, X } from 'lucide-svelte';
 
 	interface Props {
-		currentLibrary?: Library;
+		libraryId?: number | null;
 	}
 
-	let { currentLibrary }: Props = $props();
+	let { libraryId }: Props = $props();
+
+	let currentLibrary = $state<Library | null>(null);
 
 	let libraries = $state<Library[]>([]);
 	let showDropdown = $state(false);
@@ -28,6 +30,15 @@
 		loadLibraries();
 	});
 
+	// Load current library data when libraryId changes
+	$effect(() => {
+		if (libraryId && libraries.length > 0) {
+			currentLibrary = libraries.find(lib => lib.id === libraryId) || null;
+		} else {
+			currentLibrary = null;
+		}
+	});
+
 	async function loadLibraries() {
 		loading = true;
 		error = null;
@@ -39,6 +50,10 @@
 			}
 			const data = await response.json();
 			libraries = data.libraries;
+			// Update current library if we have a libraryId
+			if (libraryId) {
+				currentLibrary = libraries.find(lib => lib.id === libraryId) || null;
+			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load libraries';
 		} finally {

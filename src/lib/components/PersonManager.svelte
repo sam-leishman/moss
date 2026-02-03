@@ -265,18 +265,18 @@
 						{#each globalPeople as person (person.id)}
 							<div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 hover:shadow-md transition-shadow">
 								<div class="flex items-start justify-between">
-									<div class="flex items-center gap-3 flex-1">
+									<a href={libraryId ? `/libraries/${libraryId}/people/${person.id}` : `/people/${person.id}`} class="flex items-center gap-3 flex-1 min-w-0 group">
 										<div class="w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center">
 											<User class="w-5 h-5 text-blue-600 dark:text-blue-400" />
 										</div>
 										<div class="flex-1 min-w-0">
 											<div class="flex items-center gap-2">
-												<h3 class="font-semibold text-gray-900 dark:text-white truncate">{person.name}</h3>
+												<h3 class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{person.name}</h3>
 												<Globe class="w-3 h-3 text-blue-500 dark:text-blue-400" />
 											</div>
 											<p class="text-sm text-gray-500 dark:text-gray-400 capitalize">{person.role}</p>
 										</div>
-									</div>
+									</a>
 									<div class="flex gap-2">
 										<button
 											type="button"
@@ -309,15 +309,15 @@
 						{#each libraryPeople as person (person.id)}
 							<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
 								<div class="flex items-start justify-between">
-									<div class="flex items-center gap-3 flex-1">
+									<a href={libraryId ? `/libraries/${libraryId}/people/${person.id}` : `/people/${person.id}`} class="flex items-center gap-3 flex-1 min-w-0 group">
 										<div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
 											<User class="w-5 h-5 text-gray-600 dark:text-gray-400" />
 										</div>
 										<div class="flex-1 min-w-0">
-											<h3 class="font-semibold text-gray-900 dark:text-white truncate">{person.name}</h3>
+											<h3 class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{person.name}</h3>
 											<p class="text-sm text-gray-500 dark:text-gray-400 capitalize">{person.role}</p>
 										</div>
-									</div>
+									</a>
 									<div class="flex gap-2">
 										<button
 											type="button"

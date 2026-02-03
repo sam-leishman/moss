@@ -29,15 +29,7 @@
 	let selectedPeople = $state<number[]>([]);
 	let selectedLibraryId = $state<number | null>(null);
 
-	const personId = $derived($page.params.personId!);
-	const libraryId = $derived.by(() => {
-		const id = parseInt($page.params.id!);
-		if (isNaN(id)) {
-			error = 'Invalid library ID';
-			return 0;
-		}
-		return id;
-	});
+	const personId = $derived($page.params.personId);
 
 	const loadPerson = async () => {
 		loading = true;
@@ -106,13 +98,13 @@
 			const response = await fetch(`/api/people/${personId}/media?${params}`);
 			
 			if (!response.ok) {
-				throw new Error('Failed to fetch media');
+				throw new Error('Failed to load media');
 			}
 
-			const data = await response.json();
-			mediaItems = data.items;
-			totalItems = data.total;
-			totalPages = data.totalPages;
+			const result = await response.json();
+			mediaItems = result.items;
+			totalItems = result.total;
+			totalPages = result.totalPages;
 		} catch (err) {
 			console.error('Failed to load media:', err);
 			mediaItems = [];
@@ -124,59 +116,94 @@
 	};
 
 	$effect(() => {
-		if (personId) {
-			loadPerson();
-			loadLibraries();
-		}
+		loadPerson();
+		loadLibraries();
 	});
 
 	$effect(() => {
-		if (personId) {
+		if (person) {
 			loadMedia();
 		}
 	});
 
-	const handleSearchChange = (value: string) => {
-		searchQuery = value;
+	const formatStyleLabel = (style: string | null): string => {
+		if (!style) return 'Not specified';
+		return style.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+	};
+
+	const handleSearchChange = (query: string) => {
+		searchQuery = query;
 		currentPage = 1;
 	};
 
-	const handleMediaTypeChange = (value: MediaType | 'all') => {
-		mediaType = value;
+	const handleMediaTypeChange = (type: MediaType | 'all') => {
+		mediaType = type;
 		currentPage = 1;
 	};
 
-	const handleViewModeChange = (value: 'grid' | 'list') => {
-		viewMode = value;
-	};
-
-	const handleTagsChange = (tags: number[]) => {
-		selectedTags = tags;
+	const handleTagsChange = (tagIds: number[]) => {
+		selectedTags = tagIds;
 		currentPage = 1;
 	};
 
-	const handlePeopleChange = (people: number[]) => {
-		selectedPeople = people;
+	const handlePeopleChange = (personIds: number[]) => {
+		selectedPeople = personIds;
 		currentPage = 1;
+	};
+
+	const handleViewModeChange = (mode: 'grid' | 'list') => {
+		viewMode = mode;
 	};
 
 	const handlePageChange = (page: number) => {
 		currentPage = page;
+		window.scrollTo({ top: 0, behavior: 'smooth' });
 	};
 
 	const handleMediaClick = (media: Media) => {
 		selectedMedia = media;
 	};
 
-	const closeMediaModal = () => {
+	const handleCloseDetail = () => {
 		selectedMedia = null;
 	};
 
-	const formatStyleLabel = (style: string | null): string => {
-		if (!style) return 'Not specified';
-		return style.split('_').map(word => 
-			word.charAt(0).toUpperCase() + word.slice(1)
-		).join(' ');
+	const handleMediaUpdate = (updatedMedia: Media) => {
+		const index = mediaItems.findIndex(item => item.id === updatedMedia.id);
+		if (index >= 0) {
+			mediaItems[index] = updatedMedia;
+			mediaItems = [...mediaItems];
+		}
+		if (selectedMedia?.id === updatedMedia.id) {
+			selectedMedia = updatedMedia;
+		}
+	};
+
+	const handleNextMedia = () => {
+		const current = selectedMedia;
+		if (!current) return;
+		const currentIndex = mediaItems.findIndex(item => item.id === current.id);
+		if (currentIndex >= 0 && currentIndex < mediaItems.length - 1) {
+			selectedMedia = mediaItems[currentIndex + 1];
+		}
+	};
+
+	const handlePreviousMedia = () => {
+		const current = selectedMedia;
+		if (!current) return;
+		const currentIndex = mediaItems.findIndex(item => item.id === current.id);
+		if (currentIndex > 0) {
+			selectedMedia = mediaItems[currentIndex - 1];
+		}
+	};
+
+	const selectedMediaIndex = $derived.by(() => {
+		const current = selectedMedia;
+		return current ? mediaItems.findIndex(item => item.id === current.id) : -1;
+	});
+
+	const handleLibraryFilter = () => {
+		currentPage = 1;
 	};
 </script>
 
@@ -233,45 +260,57 @@
 				<select
 					id="library-filter"
 					bind:value={selectedLibraryId}
-					class="pl-3 pr-10 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+					onchange={handleLibraryFilter}
+					class="pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 				>
 					<option value={null}>All Libraries</option>
-					{#each libraries as lib}
-						<option value={lib.id}>{lib.name}</option>
+					{#each libraries as library (library.id)}
+						<option value={library.id}>{library.name}</option>
 					{/each}
 				</select>
 			</div>
 		{/if}
 
-		<div class="flex-1 overflow-auto">
-			<div class="p-6">
-				<MediaFilters
-					searchQuery={searchQuery}
-					mediaType={mediaType}
-					viewMode={viewMode}
-					selectedTags={selectedTags}
-					selectedPeople={selectedPeople}
-					libraryId={selectedLibraryId || 0}
-					personId={parseInt(personId)}
-					onSearchChange={handleSearchChange}
-					onMediaTypeChange={handleMediaTypeChange}
-					onViewModeChange={handleViewModeChange}
-					onTagsChange={handleTagsChange}
-					onPeopleChange={handlePeopleChange}
-				/>
+		<MediaFilters
+			{searchQuery}
+			{mediaType}
+			{viewMode}
+			{selectedTags}
+			{selectedPeople}
+			libraryId={selectedLibraryId || 0}
+			personId={person ? person.id : undefined}
+			onSearchChange={handleSearchChange}
+			onMediaTypeChange={handleMediaTypeChange}
+			onViewModeChange={handleViewModeChange}
+			onTagsChange={handleTagsChange}
+			onPeopleChange={handlePeopleChange}
+		/>
 
-				{#if mediaLoading}
-					<div class="flex items-center justify-center py-20">
-						<div class="text-center">
-							<div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-							<p class="mt-4 text-gray-600 dark:text-gray-400">Loading media...</p>
-						</div>
+		<div class="flex-1 overflow-y-auto p-6">
+			{#if mediaLoading}
+				<div class="flex items-center justify-center py-20">
+					<div class="text-center">
+						<div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+						<p class="mt-4 text-gray-600 dark:text-gray-400">Loading media...</p>
 					</div>
-				{:else if mediaItems.length === 0}
-					<div class="text-center py-20">
-						<p class="text-gray-500 dark:text-gray-400">No media found</p>
+				</div>
+			{:else if mediaItems.length === 0}
+				<div class="text-center py-20 text-gray-500 dark:text-gray-400">
+					<p class="text-lg">No media found</p>
+					{#if searchQuery || mediaType !== 'all' || selectedTags.length > 0 || selectedPeople.length > 0 || selectedLibraryId !== null}
+						<p class="mt-2 text-sm">Try adjusting your filters</p>
+					{:else}
+						<p class="mt-2 text-sm">This person has no credited media yet</p>
+					{/if}
+				</div>
+			{:else}
+				<div class="space-y-6">
+					<div class="flex items-center justify-between">
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							Showing {mediaItems.length} of {totalItems} items
+						</p>
 					</div>
-				{:else}
+
 					{#if viewMode === 'grid'}
 						<MediaGrid items={mediaItems} onItemClick={handleMediaClick} />
 					{:else}
@@ -279,7 +318,7 @@
 					{/if}
 
 					{#if totalPages > 1}
-						<div class="mt-6">
+						<div class="pt-6">
 							<Pagination
 								currentPage={currentPage}
 								totalPages={totalPages}
@@ -287,12 +326,18 @@
 							/>
 						</div>
 					{/if}
-				{/if}
-			</div>
+				</div>
+			{/if}
 		</div>
 	</div>
-{/if}
 
-{#if selectedMedia}
-	<MediaDetailModal media={selectedMedia} onClose={closeMediaModal} />
+	<MediaDetailModal 
+		media={selectedMedia} 
+		onClose={handleCloseDetail}
+		currentIndex={selectedMediaIndex >= 0 ? selectedMediaIndex : undefined}
+		totalItems={mediaItems.length > 0 ? mediaItems.length : undefined}
+		onNext={handleNextMedia}
+		onPrevious={handlePreviousMedia}
+		onMediaUpdate={handleMediaUpdate}
+	/>
 {/if}

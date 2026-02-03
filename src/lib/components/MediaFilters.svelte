@@ -16,6 +16,7 @@
 		onViewModeChange: (mode: 'grid' | 'list') => void;
 		onTagsChange: (tagIds: number[]) => void;
 		onPeopleChange: (personIds: number[]) => void;
+		personId?: number;
 	}
 
 	let { 
@@ -29,7 +30,8 @@
 		onMediaTypeChange, 
 		onViewModeChange,
 		onTagsChange,
-		onPeopleChange
+		onPeopleChange,
+		personId
 	}: Props = $props();
 
 	let allTags = $state<Tag[]>([]);
@@ -43,7 +45,10 @@
 	const loadTags = async () => {
 		tagsLoading = true;
 		try {
-			const response = await fetch(`/api/tags?library_id=${libraryId}`);
+			const url = personId 
+				? `/api/people/${personId}/tags`
+				: `/api/tags?library_id=${libraryId}`;
+			const response = await fetch(url);
 			if (response.ok) {
 				allTags = await response.json();
 			}
@@ -57,7 +62,10 @@
 	const loadPeople = async () => {
 		peopleLoading = true;
 		try {
-			const response = await fetch(`/api/people?library_id=${libraryId}`);
+			const url = personId 
+				? `/api/people/${personId}/collaborators`
+				: `/api/people?library_id=${libraryId}`;
+			const response = await fetch(url);
 			if (response.ok) {
 				allPeople = await response.json();
 			}
@@ -68,9 +76,16 @@
 		}
 	};
 
-	// Reload tags and people when library changes
+	// Reload tags and people when library changes or on person page
 	$effect(() => {
-		// Track libraryId changes
+		// For person pages, load on mount and don't track library changes
+		if (personId) {
+			loadTags();
+			loadPeople();
+			return;
+		}
+		
+		// Track libraryId changes for library pages
 		if (libraryId !== previousLibraryId) {
 			const isInitialLoad = previousLibraryId === null;
 			previousLibraryId = libraryId;
@@ -81,19 +96,20 @@
 				showPersonDropdown = false;
 			}
 			
-			// Clear selected filters when switching libraries since they may not exist in new library
-			// Do this before loading new data to prevent race condition with parent API calls
-			if (!isInitialLoad) {
-				if (selectedTags.length > 0) {
-					onTagsChange([]);
-				}
-				if (selectedPeople.length > 0) {
-					onPeopleChange([]);
-				}
-			}
+			// Load new tags and people first
+			const loadPromise = Promise.all([loadTags(), loadPeople()]);
 			
-			loadTags();
-			loadPeople();
+			// Clear selected filters after new data loads to prevent race condition
+			if (!isInitialLoad) {
+				loadPromise.then(() => {
+					if (selectedTags.length > 0) {
+						onTagsChange([]);
+					}
+					if (selectedPeople.length > 0) {
+						onPeopleChange([]);
+					}
+				});
+			}
 		}
 	});
 

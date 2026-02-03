@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Image, Tag, Users, Settings } from 'lucide-svelte';
+	import { Image, Tag, Users, Settings, Home } from 'lucide-svelte';
 
 	interface SidebarProps {
-		libraryId: number;
+		libraryId: number | null;
 		isOpen?: boolean;
 		onClose?: () => void;
 	}
@@ -18,6 +18,7 @@
 	const subRoutes = ['/tags', '/people', '/settings'];
 	
 	const isMediaActive = $derived(() => {
+		if (!libraryId) return false;
 		const path = $page.url.pathname;
 		const baseLibraryPath = `/libraries/${libraryId}`;
 		
@@ -32,7 +33,18 @@
 		return false;
 	});
 
-	const navItems = $derived([
+	// Global navigation items (always visible)
+	const globalNavItems = $derived([
+		{
+			href: '/',
+			label: 'Home',
+			icon: Home,
+			isActive: $page.url.pathname === '/'
+		}
+	]);
+
+	// Library-specific navigation items (only when in library context)
+	const libraryNavItems = $derived(libraryId ? [
 		{
 			href: `/libraries/${libraryId}`,
 			label: 'Media',
@@ -57,7 +69,7 @@
 			icon: Settings,
 			isActive: isActive(`/libraries/${libraryId}/settings`)
 		}
-	]);
+	] : []);
 </script>
 
 <!-- Mobile overlay -->
@@ -77,7 +89,24 @@
 	style="top: var(--header-height);"
 >
 	<nav class="flex flex-col h-full py-4">
-		{#each navItems as item}
+		<!-- Global Navigation -->
+		{#each globalNavItems as item}
+			<a
+				href={item.href}
+				class="flex flex-col items-center justify-center gap-1 py-4 px-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors {item.isActive ? 'text-blue-600 dark:text-white bg-blue-50 dark:bg-gray-800 border-l-4 border-blue-600 dark:border-blue-500' : ''}"
+			>
+				<item.icon class="w-6 h-6" />
+				<span class="text-xs font-medium">{item.label}</span>
+			</a>
+		{/each}
+
+		<!-- Divider if we have library items -->
+		{#if libraryId && libraryNavItems.length > 0}
+			<div class="my-2 mx-3 border-t border-gray-200 dark:border-gray-700"></div>
+		{/if}
+
+		<!-- Library Navigation -->
+		{#each libraryNavItems as item}
 			<a
 				href={item.href}
 				class="flex flex-col items-center justify-center gap-1 py-4 px-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors {item.isActive ? 'text-blue-600 dark:text-white bg-blue-50 dark:bg-gray-800 border-l-4 border-blue-600 dark:border-blue-500' : ''}"
