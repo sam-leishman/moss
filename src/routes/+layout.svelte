@@ -3,8 +3,9 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import LibrarySwitcher from '$lib/components/LibrarySwitcher.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
-	import { Menu, Settings } from 'lucide-svelte';
+	import { Menu, Settings, ArrowLeft } from 'lucide-svelte';
 	import { page } from '$app/stores';
+	import { getLastLibraryId } from '$lib/utils/storage';
 
 	let { children } = $props();
 
@@ -26,6 +27,12 @@
 
 	// Check if we're on settings page
 	const isSettingsPage = $derived($page.url.pathname.startsWith('/settings'));
+	
+	// Get last library for back link
+	const lastLibraryId = $derived.by(() => {
+		if (typeof window === 'undefined') return null;
+		return getLastLibraryId();
+	});
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -43,6 +50,15 @@
 					<Menu class="w-6 h-6" />
 				</button>
 				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">XView</h1>
+				{#if isSettingsPage && lastLibraryId}
+					<a
+						href="/libraries/{lastLibraryId}"
+						class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+					>
+						<ArrowLeft class="w-4 h-4" />
+						<span class="hidden sm:inline">Back to Library</span>
+					</a>
+				{/if}
 			</div>
 			<div class="flex items-center gap-3">
 				<a

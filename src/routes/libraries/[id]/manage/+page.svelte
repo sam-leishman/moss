@@ -3,7 +3,7 @@
 	import { RefreshCw, FolderOpen, Trash2, AlertTriangle, X, Info, Edit2, Check, Loader2 } from 'lucide-svelte';
 	import FolderBrowser from '$lib/components/FolderBrowser.svelte';
 	import type { PageData } from './$types';
-	import { clearLastLibraryId } from '$lib/utils/storage';
+	import { clearLastLibraryId, setLastLibraryId } from '$lib/utils/storage';
 
 	let { data }: { data: PageData } = $props();
 
@@ -147,6 +147,18 @@
 		error = null;
 
 		try {
+			// Fetch all libraries to determine next library
+			const librariesResponse = await fetch('/api/libraries');
+			if (!librariesResponse.ok) {
+				throw new Error('Failed to fetch libraries');
+			}
+			const librariesData = await librariesResponse.json();
+			const allLibraries = librariesData.libraries || [];
+			
+			// Find the next library (first one that's not the current library)
+			const nextLibrary = allLibraries.find((lib: { id: number }) => lib.id !== data.library.id);
+			
+			// Delete the library
 			const response = await fetch(`/api/libraries/${data.library.id}`, {
 				method: 'DELETE'
 			});
@@ -156,8 +168,12 @@
 				throw new Error(result.message || 'Failed to delete library');
 			}
 
-			// Clear from localStorage if this was the last-used library
-			clearLastLibraryId();
+			// Update localStorage with next library if available
+			if (nextLibrary) {
+				setLastLibraryId(nextLibrary.id);
+			} else {
+				clearLastLibraryId();
+			}
 			
 			// Redirect to home (which will handle the redirect logic)
 			goto('/');
