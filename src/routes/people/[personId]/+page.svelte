@@ -8,6 +8,9 @@
 	import MediaFilters from '$lib/components/MediaFilters.svelte';
 	import MediaDetailModal from '$lib/components/MediaDetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import BulkEditingPanel from '$lib/components/BulkEditingPanel.svelte';
+	import { Check } from 'lucide-svelte';
+	import { basename } from '$lib/utils/path';
 	import { fetchPersonLibraries } from '$lib/utils/api';
 
 	let person = $state<Person | null>(null);
@@ -29,8 +32,24 @@
 	let selectedTags = $state<number[]>([]);
 	let selectedPeople = $state<number[]>([]);
 	let selectedLibraryId = $state<number | null>(null);
+	let bulkSelectMode = $state(false);
+	let selectedMediaIds = $state<Set<number>>(new Set());
+	let showBulkEditPanel = $state(false);
+	let lastSelectedIndex = $state<number | null>(null);
+	let showSelectAllPagesBanner = $state(false);
+	let isSelectingAllPages = $state(false);
+	let selectAllPagesError = $state<string | null>(null);
+
+	const MAX_BULK_SELECT_ITEMS = 10000;
 
 	const personId = $derived($page.params.personId);
+
+	const resetSelectionState = () => {
+		selectedMediaIds = new Set();
+		lastSelectedIndex = null;
+		showSelectAllPagesBanner = false;
+		selectAllPagesError = null;
+	};
 
 	const loadPerson = async () => {
 		loading = true;
@@ -132,21 +151,25 @@
 	const handleSearchChange = (query: string) => {
 		searchQuery = query;
 		currentPage = 1;
+		resetSelectionState();
 	};
 
 	const handleMediaTypeChange = (type: MediaType | 'all') => {
 		mediaType = type;
 		currentPage = 1;
+		resetSelectionState();
 	};
 
 	const handleTagsChange = (tagIds: number[]) => {
 		selectedTags = tagIds;
 		currentPage = 1;
+		resetSelectionState();
 	};
 
 	const handlePeopleChange = (personIds: number[]) => {
 		selectedPeople = personIds;
 		currentPage = 1;
+		resetSelectionState();
 	};
 
 	const handleViewModeChange = (mode: 'grid' | 'list') => {
@@ -155,6 +178,7 @@
 
 	const handlePageChange = (page: number) => {
 		currentPage = page;
+		resetSelectionState();
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	};
 
@@ -202,6 +226,122 @@
 
 	const handleLibraryFilter = () => {
 		currentPage = 1;
+		resetSelectionState();
+	};
+
+	const toggleBulkSelect = () => {
+		bulkSelectMode = !bulkSelectMode;
+		if (!bulkSelectMode) {
+			resetSelectionState();
+			showBulkEditPanel = false;
+		}
+	};
+
+	const toggleMediaSelection = (mediaId: number, shiftKey: boolean = false) => {
+		const currentIndex = mediaItems.findIndex(item => item.id === mediaId);
+		
+		if (shiftKey && lastSelectedIndex !== null && currentIndex !== -1) {
+			const newSet = new Set(selectedMediaIds);
+			const start = Math.min(lastSelectedIndex, currentIndex);
+			const end = Math.max(lastSelectedIndex, currentIndex);
+			
+			const shouldSelect = !selectedMediaIds.has(mediaId);
+			
+			for (let i = start; i <= end; i++) {
+				if (shouldSelect) {
+					newSet.add(mediaItems[i].id);
+				} else {
+					newSet.delete(mediaItems[i].id);
+				}
+			}
+			
+			selectedMediaIds = newSet;
+			lastSelectedIndex = currentIndex;
+		} else {
+			const newSet = new Set(selectedMediaIds);
+			if (newSet.has(mediaId)) {
+				newSet.delete(mediaId);
+			} else {
+				newSet.add(mediaId);
+			}
+			selectedMediaIds = newSet;
+			if (currentIndex !== -1) {
+				lastSelectedIndex = currentIndex;
+			}
+		}
+	};
+
+	const selectAll = () => {
+		selectedMediaIds = new Set(mediaItems.map(item => item.id));
+		lastSelectedIndex = mediaItems.length > 0 ? mediaItems.length - 1 : null;
+		if (totalPages > 1) {
+			showSelectAllPagesBanner = true;
+		}
+	};
+
+	const selectAllPages = async () => {
+		if (totalItems > MAX_BULK_SELECT_ITEMS) {
+			selectAllPagesError = `Cannot select more than ${MAX_BULK_SELECT_ITEMS.toLocaleString()} items at once. Please use filters to narrow your selection.`;
+			return;
+		}
+
+		isSelectingAllPages = true;
+		selectAllPagesError = null;
+
+		try {
+			const params = new URLSearchParams({
+				page: '1',
+				page_size: totalItems.toString()
+			});
+
+			if (mediaType !== 'all') {
+				params.append('media_type', mediaType);
+			}
+
+			if (searchQuery.trim()) {
+				params.append('search', searchQuery.trim());
+			}
+
+			if (selectedTags.length > 0) {
+				params.append('tag_ids', selectedTags.join(','));
+			}
+
+			if (selectedPeople.length > 0) {
+				params.append('person_ids', selectedPeople.join(','));
+			}
+
+			if (selectedLibraryId !== null) {
+				params.append('library_id', selectedLibraryId.toString());
+			}
+
+			const response = await fetch(`/api/people/${personId}/media?${params}`);
+			
+			if (!response.ok) {
+				throw new Error('Failed to load all items');
+			}
+
+			const result = await response.json();
+			selectedMediaIds = new Set(result.items.map((item: Media) => item.id));
+			showSelectAllPagesBanner = false;
+		} catch (err) {
+			selectAllPagesError = err instanceof Error ? err.message : 'Failed to select all items. Please try again.';
+		} finally {
+			isSelectingAllPages = false;
+		}
+	};
+
+	const deselectAll = () => {
+		resetSelectionState();
+	};
+
+	const handleBulkEditComplete = async () => {
+		await loadMedia();
+	};
+
+	const handleBulkEditClose = () => {
+		showBulkEditPanel = false;
+		bulkSelectMode = false;
+		resetSelectionState();
 	};
 </script>
 
@@ -218,7 +358,7 @@
 	</div>
 {:else if person}
 	<div class="flex flex-col h-full">
-		<div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
+		<div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 rounded-lg p-6">
 			<div class="flex items-start gap-6">
 				<div class="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
 					<User class="w-10 h-10 text-gray-600 dark:text-gray-400" />
@@ -269,20 +409,22 @@
 			</div>
 		{/if}
 
-		<MediaFilters
-			{searchQuery}
-			{mediaType}
-			{viewMode}
-			{selectedTags}
-			{selectedPeople}
-			libraryId={selectedLibraryId || 0}
-			personId={person ? person.id : undefined}
-			onSearchChange={handleSearchChange}
-			onMediaTypeChange={handleMediaTypeChange}
-			onViewModeChange={handleViewModeChange}
-			onTagsChange={handleTagsChange}
-			onPeopleChange={handlePeopleChange}
-		/>
+		<div class="px-6 pt-6">
+			<MediaFilters
+				{searchQuery}
+				{mediaType}
+				{viewMode}
+				{selectedTags}
+				{selectedPeople}
+				libraryId={selectedLibraryId || 0}
+				personId={person ? person.id : undefined}
+				onSearchChange={handleSearchChange}
+				onMediaTypeChange={handleMediaTypeChange}
+				onViewModeChange={handleViewModeChange}
+				onTagsChange={handleTagsChange}
+				onPeopleChange={handlePeopleChange}
+			/>
+		</div>
 
 		<div class="flex-1 overflow-y-auto p-6">
 			{#if mediaLoading}
@@ -303,13 +445,127 @@
 				</div>
 			{:else}
 				<div class="space-y-6">
+					{#if selectAllPagesError}
+						<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center justify-between">
+							<p class="text-sm text-red-800 dark:text-red-200">
+								{selectAllPagesError}
+							</p>
+							<button
+								type="button"
+								onclick={() => selectAllPagesError = null}
+								class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+								aria-label="Dismiss"
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
+					{/if}
+
+					{#if showSelectAllPagesBanner}
+						<div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center justify-between">
+							<p class="text-sm text-blue-900 dark:text-blue-100">
+								All <span class="font-medium">{mediaItems.length}</span> items on this page are selected.
+								<button
+									type="button"
+									onclick={selectAllPages}
+									disabled={isSelectingAllPages}
+									class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{#if isSelectingAllPages}
+										Selecting...
+									{:else}
+										Select all {totalItems.toLocaleString()} items
+									{/if}
+								</button>
+								across all pages.
+							</p>
+							<button
+								type="button"
+								onclick={() => {
+									showSelectAllPagesBanner = false;
+									isSelectingAllPages = false;
+								}}
+								class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+								aria-label="Dismiss"
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
+					{/if}
+
 					<div class="flex items-center justify-between">
-						<p class="text-sm text-gray-600 dark:text-gray-400">
-							Showing {mediaItems.length} of {totalItems} items
-						</p>
+						<div class="flex items-center gap-4">
+							<p class="text-sm text-gray-600 dark:text-gray-400">
+								Showing {mediaItems.length} of {totalItems} items
+							</p>
+							{#if bulkSelectMode}
+								<p class="text-sm font-medium text-blue-600">
+									{selectedMediaIds.size} selected
+								</p>
+								<button
+									type="button"
+									onclick={selectAll}
+									class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
+								>
+									Select All
+								</button>
+								<button
+									type="button"
+									onclick={deselectAll}
+									class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline"
+								>
+									Deselect All
+								</button>
+							{/if}
+						</div>
+						<div class="flex items-center gap-2">
+							{#if bulkSelectMode && selectedMediaIds.size > 0}
+								<button
+									type="button"
+									onclick={() => showBulkEditPanel = true}
+									class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+								>
+									Edit Selected
+								</button>
+							{/if}
+							<button
+								type="button"
+								onclick={toggleBulkSelect}
+								class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors {bulkSelectMode ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}"
+							>
+								{bulkSelectMode ? 'Cancel Selection' : 'Bulk Select'}
+							</button>
+						</div>
 					</div>
 
-					{#if viewMode === 'grid'}
+					{#if bulkSelectMode}
+						<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+							{#each mediaItems as media (media.id)}
+								<div class="relative group">
+									<button
+										type="button"
+										onclick={(e) => toggleMediaSelection(media.id, e.shiftKey)}
+										class="w-full aspect-square rounded-lg overflow-hidden border-2 transition-all {selectedMediaIds.has(media.id) ? 'border-blue-600 ring-2 ring-blue-600' : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'}"
+									>
+										<img
+											src="/api/media/{media.id}/thumbnail"
+											alt={media.title || basename(media.path)}
+											class="w-full h-full object-cover"
+										/>
+									</button>
+									{#if selectedMediaIds.has(media.id)}
+										<div class="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+											<Check class="w-4 h-4 text-white" />
+										</div>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					{:else if viewMode === 'grid'}
 						<MediaGrid items={mediaItems} onItemClick={handleMediaClick} />
 					{:else}
 						<MediaList items={mediaItems} onItemClick={handleMediaClick} />
@@ -338,4 +594,14 @@
 		onPrevious={handlePreviousMedia}
 		onMediaUpdate={handleMediaUpdate}
 	/>
+{/if}
+
+{#if showBulkEditPanel}
+		<BulkEditingPanel
+			selectedCount={selectedMediaIds.size}
+			selectedMediaIds={Array.from(selectedMediaIds)}
+			onComplete={handleBulkEditComplete}
+			onClose={handleBulkEditClose}
+		/>
+	{/if}
 {/if}
