@@ -292,6 +292,33 @@ export const migrations: Migration[] = [
 			`);
 			db.exec('DELETE FROM schema_version WHERE version = 6');
 		}
+	},
+	{
+		version: 7,
+		up: (db: Database.Database) => {
+			db.exec(`
+				CREATE TABLE IF NOT EXISTS user_media_like (
+					user_id INTEGER NOT NULL,
+					media_id INTEGER NOT NULL,
+					created_at TEXT NOT NULL DEFAULT (datetime('now')),
+					PRIMARY KEY (user_id, media_id),
+					FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+					FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
+				)
+			`);
+			
+			db.exec(`
+				CREATE INDEX IF NOT EXISTS idx_user_media_like_user_id ON user_media_like(user_id);
+				CREATE INDEX IF NOT EXISTS idx_user_media_like_media_id ON user_media_like(media_id);
+			`);
+			
+			const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
+			stmt.run(7);
+		},
+		down: (db: Database.Database) => {
+			db.exec('DROP TABLE IF EXISTS user_media_like');
+			db.exec('DELETE FROM schema_version WHERE version = 7');
+		}
 	}
 ];
 

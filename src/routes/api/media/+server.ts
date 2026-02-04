@@ -2,7 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { getDatabase } from '$lib/server/db';
 import type { Media } from '$lib/server/db';
 import { sanitizeInteger, sanitizePositiveInteger, sanitizeMediaType } from '$lib/server/security';
-import { requireLibraryAccess } from '$lib/server/auth';
+import { requireAuth, requireLibraryAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
 export interface MediaListResponse {
@@ -23,6 +23,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const searchParam = url.searchParams.get('search');
 	const tagIdsParam = url.searchParams.get('tag_ids');
 	const personIdsParam = url.searchParams.get('person_ids');
+	const likedParam = url.searchParams.get('liked');
 
 	if (!libraryIdParam) {
 		error(400, 'library_id is required');
@@ -74,6 +75,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		personIds = personIdsParam.split(',').map(id => sanitizeInteger(id.trim())).filter(id => id > 0);
 	}
 
+	// Liked filtering
+	const likedOnly = likedParam === 'true';
+	let userId: number | undefined;
+	if (likedOnly) {
+		const user = requireAuth(locals);
+		userId = user.id;
+	}
+
 	const whereClause = whereConditions.join(' AND ');
 
 	let countStmt;
@@ -103,6 +112,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		`).join(' INTERSECT ');
 		filterQueries.push(personFilterQuery);
 		filterParams.push(...personIds);
+	}
+
+	if (likedOnly && userId) {
+		// Filter by liked media for current user
+		filterQueries.push('SELECT media_id FROM user_media_like WHERE user_id = ?');
+		filterParams.push(userId);
 	}
 
 	if (filterQueries.length > 0) {

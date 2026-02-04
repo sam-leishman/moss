@@ -26,6 +26,7 @@
 	let selectedMedia = $state<Media | null>(null);
 	let selectedTags = $state<number[]>([]);
 	let selectedPeople = $state<number[]>([]);
+	let likedOnly = $state(false);
 	let bulkSelectMode = $state(false);
 	let selectedMediaIds = $state<Set<number>>(new Set());
 	let showBulkEditPanel = $state(false);
@@ -68,6 +69,10 @@
 
 			if (selectedPeople.length > 0) {
 				params.append('person_ids', selectedPeople.join(','));
+			}
+
+			if (likedOnly) {
+				params.append('liked', 'true');
 			}
 
 			const response = await fetch(`/api/media?${params}`);
@@ -114,6 +119,12 @@
 
 	const handlePeopleChange = (personIds: number[]) => {
 		selectedPeople = personIds;
+		currentPage = 1;
+		resetSelectionState();
+	};
+
+	const handleLikedOnlyChange = (liked: boolean) => {
+		likedOnly = liked;
 		currentPage = 1;
 		resetSelectionState();
 	};
@@ -295,12 +306,14 @@
 		{viewMode}
 		{selectedTags}
 		{selectedPeople}
+		{likedOnly}
 		libraryId={data.library.id}
 		onSearchChange={handleSearchChange}
 		onMediaTypeChange={handleMediaTypeChange}
 		onViewModeChange={handleViewModeChange}
 		onTagsChange={handleTagsChange}
 		onPeopleChange={handlePeopleChange}
+		onLikedOnlyChange={handleLikedOnlyChange}
 	/>
 
 	<div class="flex-1 overflow-y-auto p-6">

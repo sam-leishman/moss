@@ -8,6 +8,7 @@
 	import { goto } from '$app/navigation';
 	import { getLastLibraryId } from '$lib/utils/storage';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { likesStore } from '$lib/stores/likes.svelte';
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
@@ -43,6 +44,9 @@
 	// Initialize auth and handle redirects
 	onMount(async () => {
 		await authStore.init();
+		if (authStore.isAuthenticated) {
+			await likesStore.init();
+		}
 	});
 
 	// Reactive redirect after auth is initialized
@@ -53,6 +57,7 @@
 	});
 
 	const handleLogout = async () => {
+		likesStore.clear();
 		await authStore.logout();
 	};
 </script>

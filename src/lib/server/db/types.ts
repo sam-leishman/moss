@@ -96,3 +96,9 @@ export interface LibraryPermission {
 	library_id: number;
 	created_at: string;
 }
+
+export interface UserMediaLike {
+	user_id: number;
+	media_id: number;
+	created_at: string;
+}

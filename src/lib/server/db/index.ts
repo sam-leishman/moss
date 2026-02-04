@@ -14,5 +14,6 @@ export type {
 	SchemaVersion,
 	User,
 	Session,
-	LibraryPermission
+	LibraryPermission,
+	UserMediaLike
 } from './types';

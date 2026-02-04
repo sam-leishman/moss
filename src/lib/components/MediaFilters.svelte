@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { MediaType } from '$lib/server/security';
 	import type { Tag, Person } from '$lib/server/db';
-	import { Search, Grid3x3, List, Tag as TagIcon, User, X } from 'lucide-svelte';
+	import { Search, Grid3x3, List, Tag as TagIcon, User, X, Heart } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 
 	interface Props {
@@ -10,12 +10,14 @@
 		viewMode: 'grid' | 'list';
 		selectedTags: number[];
 		selectedPeople: number[];
+		likedOnly: boolean;
 		libraryId: number;
 		onSearchChange: (query: string) => void;
 		onMediaTypeChange: (type: MediaType | 'all') => void;
 		onViewModeChange: (mode: 'grid' | 'list') => void;
 		onTagsChange: (tagIds: number[]) => void;
 		onPeopleChange: (personIds: number[]) => void;
+		onLikedOnlyChange: (liked: boolean) => void;
 		personId?: number;
 	}
 
@@ -25,12 +27,14 @@
 		viewMode,
 		selectedTags,
 		selectedPeople,
+		likedOnly,
 		libraryId,
 		onSearchChange, 
 		onMediaTypeChange, 
 		onViewModeChange,
 		onTagsChange,
 		onPeopleChange,
+		onLikedOnlyChange,
 		personId
 	}: Props = $props();
 
@@ -138,6 +142,7 @@
 	const clearAllFilters = () => {
 		onTagsChange([]);
 		onPeopleChange([]);
+		onLikedOnlyChange(false);
 	};
 
 	const togglePerson = (personId: number) => {
@@ -156,7 +161,7 @@
 	const availableTagsForDropdown = $derived(allTags.filter(tag => !selectedTags.includes(tag.id)));
 	const selectedPersonObjects = $derived(allPeople.filter(person => selectedPeople.includes(person.id)));
 	const availablePeopleForDropdown = $derived(allPeople.filter(person => !selectedPeople.includes(person.id)));
-	const hasActiveFilters = $derived(selectedTags.length > 0 || selectedPeople.length > 0);
+	const hasActiveFilters = $derived(selectedTags.length > 0 || selectedPeople.length > 0 || likedOnly);
 </script>
 
 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
@@ -314,6 +319,16 @@
 					</div>
 				{/if}
 			</div>
+
+			<!-- Liked Filter -->
+			<button
+				type="button"
+				onclick={() => onLikedOnlyChange(!likedOnly)}
+				class="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-lg transition-colors {likedOnly ? 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-800 dark:text-red-300' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}"
+			>
+				<Heart class="w-4 h-4 {likedOnly ? 'fill-current' : ''}" />
+				Liked Only
+			</button>
 
 				{#if selectedPersonObjects.length > 0}
 					{#each selectedPersonObjects as person (person.id)}

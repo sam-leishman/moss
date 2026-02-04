@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export const createTablesSQL = `
 -- Schema version tracking
@@ -97,6 +97,16 @@ CREATE TABLE IF NOT EXISTS media_credit (
 	FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE,
 	FOREIGN KEY (person_id) REFERENCES person(id) ON DELETE CASCADE
 );
+
+-- User media likes
+CREATE TABLE IF NOT EXISTS user_media_like (
+	user_id INTEGER NOT NULL,
+	media_id INTEGER NOT NULL,
+	created_at TEXT NOT NULL DEFAULT (datetime('now')),
+	PRIMARY KEY (user_id, media_id),
+	FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+	FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
+);
 `;
 
 export const createIndexesSQL = `
@@ -127,4 +137,8 @@ CREATE INDEX IF NOT EXISTS idx_person_is_global ON person(is_global);
 -- Media credit indexes
 CREATE INDEX IF NOT EXISTS idx_media_credit_media_id ON media_credit(media_id);
 CREATE INDEX IF NOT EXISTS idx_media_credit_person_id ON media_credit(person_id);
+
+-- User media like indexes
+CREATE INDEX IF NOT EXISTS idx_user_media_like_user_id ON user_media_like(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_media_like_media_id ON user_media_like(media_id);
 `;

@@ -5,7 +5,8 @@
 	import TagSelector from './TagSelector.svelte';
 	import CreditSelector from './CreditSelector.svelte';
 	import TitleEditor from './TitleEditor.svelte';
-	import { X, Info, Pencil, ChevronLeft, ChevronRight } from 'lucide-svelte';
+	import { X, Info, Pencil, ChevronLeft, ChevronRight, Heart } from 'lucide-svelte';
+	import { likesStore } from '$lib/stores/likes.svelte';
 
 	interface Props {
 		media: Media | null;
@@ -24,6 +25,7 @@
 	let mediaData = $state<Media | null>(media);
 	let creditsAbortController: AbortController | null = null;
 	let mediaDataAbortController: AbortController | null = null;
+	let isLiking = $state(false);
 
 	$effect(() => {
 		mediaData = media;
@@ -168,8 +170,22 @@
 		showEdit = !showEdit;
 	};
 
+	const handleLikeClick = async () => {
+		if (!media || isLiking) return;
+		
+		isLiking = true;
+		try {
+			await likesStore.toggleLike(media.id);
+		} catch (error) {
+			console.error('Failed to toggle like:', error);
+		} finally {
+			isLiking = false;
+		}
+	};
+
 	const hasPrevious = $derived(currentIndex !== undefined && currentIndex > 0);
 	const hasNext = $derived(currentIndex !== undefined && totalItems !== undefined && currentIndex < totalItems - 1);
+	const isLiked = $derived(media ? likesStore.isLiked(media.id) : false);
 
 </script>
 
@@ -223,8 +239,18 @@
 
 			<button
 				type="button"
+				onclick={withStopPropagation(handleLikeClick)}
+				class="absolute top-4 right-28 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors disabled:opacity-50"
+				aria-label={isLiked ? 'Unlike' : 'Like'}
+				disabled={isLiking}
+			>
+				<Heart class="w-6 h-6 transition-colors {isLiked ? 'fill-red-500 text-red-500' : ''}" />
+			</button>
+
+			<button
+				type="button"
 				onclick={withStopPropagation(toggleEdit)}
-				class="absolute top-4 right-28 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+				class="absolute top-4 right-40 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
 				aria-label="Toggle edit"
 			>
 				<Pencil class="w-6 h-6" />
