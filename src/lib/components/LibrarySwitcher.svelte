@@ -6,6 +6,7 @@
 	import { Library as LibraryIcon, ChevronDown, Check, RefreshCw, Plus, X } from 'lucide-svelte';
 	import { fetchLibraries } from '$lib/utils/api';
 	import { setLastLibraryId } from '$lib/utils/storage';
+	import { authStore } from '$lib/stores/auth.svelte';
 
 	interface Props {
 		libraryId?: number | null;
@@ -250,15 +251,17 @@
 					</button>
 				</div>
 			{/if}
-			<div class="border-t border-gray-200 dark:border-gray-700">
-				<button
-					onclick={openCreateModal}
-					class="flex items-center w-full gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
-				>
-					<Plus class="w-4 h-4" />
-					<span>New Library</span>
-				</button>
-			</div>
+			{#if authStore.isAdmin}
+				<div class="border-t border-gray-200 dark:border-gray-700">
+					<button
+						onclick={openCreateModal}
+						class="flex items-center w-full gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+					>
+						<Plus class="w-4 h-4" />
+						<span>New Library</span>
+					</button>
+				</div>
+			{/if}
 		</div>
 	{/if}
 

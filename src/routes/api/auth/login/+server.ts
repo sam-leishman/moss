@@ -4,7 +4,6 @@ import { verifyPassword } from '$lib/server/auth';
 import { createSession } from '$lib/server/auth';
 import { ValidationError, handleError } from '$lib/server/errors';
 import { getLogger } from '$lib/server/logging';
-import { rateLimitKey, checkRateLimit } from '$lib/server/security';
 import type { User } from '$lib/server/db';
 import type { RequestHandler } from './$types';
 
@@ -12,11 +11,6 @@ const logger = getLogger('api:auth:login');
 
 export const POST: RequestHandler = async ({ request, cookies, getClientAddress }) => {
 	try {
-		const key = rateLimitKey({ request, getClientAddress } as any);
-		if (!checkRateLimit(key, { maxRequests: 5, windowMs: 15 * 60 * 1000 })) {
-			logger.warn(`Rate limit exceeded for login attempt from ${getClientAddress()}`);
-			throw error(429, 'Too many login attempts. Please try again later.');
-		}
 		
 		const { username, password, rememberMe } = await request.json();
 		
@@ -25,7 +19,8 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress 
 		}
 		
 		const db = getDatabase();
-		const user = db.prepare('SELECT * FROM user WHERE username = ? COLLATE NOCASE').get(username) as User | undefined;
+		// Usernames are stored in lowercase, query directly
+		const user = db.prepare('SELECT * FROM user WHERE username = ?').get(username.toLowerCase()) as User | undefined;
 		
 		if (!user) {
 			throw new ValidationError('Invalid username or password');

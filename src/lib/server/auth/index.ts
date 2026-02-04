@@ -1,4 +1,4 @@
-export { hashPassword, verifyPassword, validatePassword, validateUsername } from './password';
+export { hashPassword, verifyPassword, validatePassword, validateUsername, normalizeUsername } from './password';
 export { 
 	generateSessionToken, 
 	createSession, 

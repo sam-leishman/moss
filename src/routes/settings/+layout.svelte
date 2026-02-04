@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Settings as SettingsIcon, BarChart3, Activity } from 'lucide-svelte';
+	import { Settings as SettingsIcon, BarChart3, Activity, Users, Database } from 'lucide-svelte';
+	import { authStore } from '$lib/stores/auth.svelte';
 
 	let { children } = $props();
 
@@ -8,26 +9,47 @@
 		return $page.url.pathname === path || $page.url.pathname.startsWith(path + '/');
 	};
 
-	const settingsNavItems = $derived([
-		{
-			href: '/settings/general',
-			label: 'General',
-			icon: SettingsIcon,
-			isActive: isActive('/settings/general')
-		},
-		{
-			href: '/settings/statistics',
-			label: 'Statistics',
-			icon: BarChart3,
-			isActive: isActive('/settings/statistics')
-		},
-		{
-			href: '/settings/performance',
-			label: 'Performance',
-			icon: Activity,
-			isActive: isActive('/settings/performance')
+	const settingsNavItems = $derived.by(() => {
+		const items = [
+			{
+				href: '/settings/general',
+				label: 'General',
+				icon: SettingsIcon,
+				isActive: isActive('/settings/general')
+			}
+		];
+
+		if (authStore.isAdmin) {
+			items.push(
+				{
+					href: '/settings/statistics',
+					label: 'Statistics',
+					icon: BarChart3,
+					isActive: isActive('/settings/statistics')
+				},
+				{
+					href: '/settings/performance',
+					label: 'Performance',
+					icon: Activity,
+					isActive: isActive('/settings/performance')
+				},
+				{
+					href: '/settings/data',
+					label: 'Data',
+					icon: Database,
+					isActive: isActive('/settings/data')
+				},
+				{
+					href: '/settings/users',
+					label: 'Users',
+					icon: Users,
+					isActive: isActive('/settings/users')
+				}
+			);
 		}
-	]);
+
+		return items;
+	});
 </script>
 
 <!-- Settings Sidebar -->

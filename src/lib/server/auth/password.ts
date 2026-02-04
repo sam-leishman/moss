@@ -18,12 +18,8 @@ export async function verifyPassword(passwordHash: string, password: string): Pr
 }
 
 export function validatePassword(password: string): void {
-	if (!password || password.length < 8) {
-		throw new ValidationError('Password must be at least 8 characters long');
-	}
-	
-	if (password.length > 128) {
-		throw new ValidationError('Password must not exceed 128 characters');
+	if (!password) {
+		throw new ValidationError('Password is required');
 	}
 }
 
@@ -39,4 +35,8 @@ export function validateUsername(username: string): void {
 	if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
 		throw new ValidationError('Username can only contain letters, numbers, underscores, and hyphens');
 	}
+}
+
+export function normalizeUsername(username: string): string {
+	return username.toLowerCase();
 }
