@@ -41,6 +41,7 @@ export interface Person {
 	role: 'artist' | 'performer';
 	library_id: number | null;
 	is_global: number;
+	image_path: string | null;
 	created_at: string;
 	updated_at: string;
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Plus, Trash2, Pencil, User, Globe } from 'lucide-svelte';
+	import { Plus, Trash2, Pencil, User, Globe, Upload, X } from 'lucide-svelte';
 	import type { Person } from '$lib/server/db';
 	import { fetchLibraries } from '$lib/utils/api';
 
@@ -11,6 +11,19 @@
 
 	let people = $state<Person[]>([]);
 	let libraries = $state<Map<number, string>>(new Map());
+	
+	// Derived state for proper reactivity
+	let globalPeople = $derived(() => people.filter(p => p.is_global === 1));
+	let libraryPeople = $derived(() => people.filter(p => p.is_global === 0));
+	let peopleByLibrary = $derived(() => {
+		const map = new Map<number, Person[]>();
+		for (const person of libraryPeople()) {
+			const libId = person.library_id as number;
+			const existing = map.get(libId) || [];
+			map.set(libId, [...existing, person]);
+		}
+		return map;
+	});
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let showCreateModal = $state(false);
@@ -25,6 +38,12 @@
 	let showCrossLibraryWarning = $state(false);
 	let crossLibraryUsage = $state<Array<{ library_id: number; library_name: string; count: number }>>([]);
 	let totalAffectedItems = $state(0);
+	let uploadingImage = $state(false);
+	let imageUploadError = $state<string | null>(null);
+	let fileInputRef = $state<HTMLInputElement | null>(null);
+	let pendingImageFile = $state<File | null>(null);
+	let pendingImagePreview = $state<string | null>(null);
+	let pendingImageAction = $state<'upload' | 'delete' | null>(null);
 
 	const loadPeople = async () => {
 		loading = true;
@@ -33,8 +52,8 @@
 			const url = libraryId ? `/api/people?library_id=${libraryId}` : '/api/people';
 			const response = await fetch(url);
 			if (!response.ok) throw new Error('Failed to fetch people');
-			people = await response.json();
-			
+			const newPeople = await response.json();
+			people = newPeople;
 			// Load library names for library-specific people
 			const libraryIds = new Set(people.filter(p => p.library_id !== null).map(p => p.library_id as number));
 			if (libraryIds.size > 0) {
@@ -48,6 +67,7 @@
 				libraries = libMap;
 			}
 		} catch (err) {
+			console.error('Error loading people:', err);
 			error = err instanceof Error ? err.message : 'Failed to load people';
 		} finally {
 			loading = false;
@@ -141,18 +161,80 @@
 			}
 
 			if (!response.ok) {
+				if (pendingImagePreview) {
+					URL.revokeObjectURL(pendingImagePreview);
+				}
 				const data = await response.json();
 				throw new Error(data.message || 'Failed to update person');
 			}
 
+			// Commit pending image changes
+			if (pendingImageAction === 'upload' && pendingImageFile && editingPerson) {
+				try {
+					const formData = new FormData();
+					formData.append('image', pendingImageFile);
+
+					const imgResponse = await fetch(`/api/people/${editingPerson.id}/image`, {
+						method: 'POST',
+						body: formData
+					});
+
+					if (!imgResponse.ok) {
+						if (pendingImagePreview) {
+							URL.revokeObjectURL(pendingImagePreview);
+						}
+						const data = await imgResponse.json();
+						throw new Error(data.message || 'Failed to upload image');
+					}
+				} catch (imgErr) {
+					if (pendingImagePreview) {
+						URL.revokeObjectURL(pendingImagePreview);
+					}
+					error = imgErr instanceof Error ? imgErr.message : 'Failed to upload image';
+					loading = false;
+					return;
+				}
+			} else if (pendingImageAction === 'delete' && editingPerson) {
+				try {
+					const imgResponse = await fetch(`/api/people/${editingPerson.id}/image`, {
+						method: 'DELETE'
+					});
+
+					if (!imgResponse.ok) {
+						if (pendingImagePreview) {
+							URL.revokeObjectURL(pendingImagePreview);
+						}
+						const data = await imgResponse.json();
+						throw new Error(data.message || 'Failed to delete image');
+					}
+				} catch (imgErr) {
+					if (pendingImagePreview) {
+						URL.revokeObjectURL(pendingImagePreview);
+					}
+					error = imgErr instanceof Error ? imgErr.message : 'Failed to delete image';
+					loading = false;
+					return;
+				}
+			}
+
+			if (pendingImagePreview) {
+				URL.revokeObjectURL(pendingImagePreview);
+			}
 			showCrossLibraryWarning = false;
 			editingPerson = null;
 			newPersonName = '';
 			newPersonStyle = '';
 			newPersonAge = null;
 			isGlobal = false;
+			imageUploadError = null;
+			pendingImageFile = null;
+			pendingImagePreview = null;
+			pendingImageAction = null;
 			await loadPeople();
 		} catch (err) {
+			if (pendingImagePreview) {
+				URL.revokeObjectURL(pendingImagePreview);
+			}
 			error = err instanceof Error ? err.message : 'Failed to update person';
 		} finally {
 			loading = false;
@@ -199,6 +281,10 @@
 		newPersonName = person.name;
 		newPersonRole = person.role;
 		isGlobal = person.is_global === 1;
+		pendingImageFile = null;
+		pendingImagePreview = null;
+		pendingImageAction = null;
+		imageUploadError = null;
 		
 		try {
 			const response = await fetch(`/api/people/${person.id}`);
@@ -218,11 +304,67 @@
 	};
 
 	const cancelEdit = () => {
+		if (!editingPerson) return;
+
+		// Clean up pending image preview
+		if (pendingImagePreview) {
+			URL.revokeObjectURL(pendingImagePreview);
+		}
+
 		editingPerson = null;
 		newPersonName = '';
 		newPersonStyle = '';
 		newPersonAge = null;
 		isGlobal = false;
+		imageUploadError = null;
+		pendingImageFile = null;
+		pendingImagePreview = null;
+		pendingImageAction = null;
+	};
+
+	const handleImageUpload = (event: Event) => {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		
+		if (!file || !editingPerson) return;
+
+		const maxSize = 10 * 1024 * 1024;
+		if (file.size > maxSize) {
+			imageUploadError = 'Image must be smaller than 10MB';
+			return;
+		}
+
+		const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+		if (!allowedTypes.includes(file.type)) {
+			imageUploadError = 'Only JPEG, PNG, and WebP images are allowed';
+			return;
+		}
+
+		imageUploadError = null;
+
+		if (pendingImagePreview) {
+			URL.revokeObjectURL(pendingImagePreview);
+		}
+
+		pendingImageFile = file;
+		pendingImagePreview = URL.createObjectURL(file);
+		pendingImageAction = 'upload';
+
+		if (input) input.value = '';
+	};
+
+	const handleDeleteImage = () => {
+		if (!editingPerson || !confirm('Are you sure you want to delete this image?')) return;
+
+		imageUploadError = null;
+
+		if (pendingImagePreview) {
+			URL.revokeObjectURL(pendingImagePreview);
+			pendingImagePreview = null;
+		}
+
+		pendingImageFile = null;
+		pendingImageAction = 'delete';
 	};
 
 	const openCreateModal = () => {
@@ -271,25 +413,27 @@
 			No people added yet. Click "Add Person" to get started.
 		</div>
 	{:else}
-		{@const globalPeople = people.filter(p => p.is_global === 1)}
-		{@const libraryPeople = people.filter(p => p.is_global === 0)}
-		{@const peopleByLibrary = new Map<number, Person[]>()}
-		{#each libraryPeople as person}
-			{@const libId = person.library_id as number}
-			{@const _ = peopleByLibrary.set(libId, [...(peopleByLibrary.get(libId) || []), person])}
-		{/each}
-		
 		<div class="space-y-6">
-			{#if globalPeople.length > 0}
+			{#if globalPeople().length > 0}
 				<div>
-					<h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Global People ({globalPeople.length})</h3>
+					<h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Global People ({globalPeople().length})</h3>
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-						{#each globalPeople as person (person.id)}
+						{#each globalPeople() as person (person.id)}
 							<div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 hover:shadow-md transition-shadow">
 								<div class="flex items-start justify-between">
 									<a href={libraryId ? `/libraries/${libraryId}/people/${person.id}` : `/people/${person.id}`} class="flex items-center gap-3 flex-1 min-w-0 group">
-										<div class="w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center">
-											<User class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+										<div class="w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+											{#if person.image_path}
+												{#key `${person.id}-${person.updated_at}`}
+													<img 
+														src="/api/images/people/{person.image_path}?v={new Date(person.updated_at).getTime()}" 
+														alt={person.name} 
+														class="w-full h-full object-cover"
+													/>
+												{/key}
+											{:else}
+												<User class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+											{/if}
 										</div>
 										<div class="flex-1 min-w-0">
 											<div class="flex items-center gap-2">
@@ -324,25 +468,35 @@
 				</div>
 			{/if}
 			
-			{#if peopleByLibrary.size > 0}
-				{#each Array.from(peopleByLibrary.entries()).sort((a, b) => {
-					const nameA = libraries.get(a[0]) || '';
-					const nameB = libraries.get(b[0]) || '';
-					return nameA.localeCompare(nameB);
-				}) as [libId, libPeople] (libId)}
+			{#if peopleByLibrary().size > 0}
+					{#each Array.from(peopleByLibrary().entries()).sort((a, b) => {
+						const nameA = libraries.get(a[0]) || '';
+						const nameB = libraries.get(b[0]) || '';
+						return nameA.localeCompare(nameB);
+					}) as [libId, libPeople] (libId)}
 					<div>
-						<h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
-							{libraries.get(libId) || `Library ${libId}`} ({libPeople.length})
-						</h3>
+							<h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
+								{libraries.get(libId) || `Library ${libId}`} ({libPeople.length})
+							</h3>
 						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 							{#each libPeople as person (person.id)}
 								<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
 									<div class="flex items-start justify-between">
 										<a href={libraryId ? `/libraries/${libraryId}/people/${person.id}` : `/people/${person.id}`} class="flex items-center gap-3 flex-1 min-w-0 group">
-											<div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+										<div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+											{#if person.image_path}
+												{#key `${person.id}-${person.updated_at}`}
+													<img 
+														src="/api/images/people/{person.image_path}?v={new Date(person.updated_at).getTime()}" 
+														alt={person.name} 
+														class="w-full h-full object-cover"
+													/>
+												{/key}
+											{:else}
 												<User class="w-5 h-5 text-gray-600 dark:text-gray-400" />
-											</div>
-											<div class="flex-1 min-w-0">
+											{/if}
+										</div>
+										<div class="flex-1 min-w-0">
 												<h3 class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{person.name}</h3>
 												<p class="text-sm text-gray-500 dark:text-gray-400 capitalize">{person.role}</p>
 											</div>
@@ -485,6 +639,79 @@
 			<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Edit Person</h3>
 			
 			<div class="space-y-4">
+				<div>
+					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						Profile Image
+					</label>
+					<div class="flex items-center gap-4">
+						<div class="relative group">
+							<div class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+								{#if pendingImageAction === 'upload' && pendingImagePreview}
+									<img 
+										src={pendingImagePreview} 
+										alt={editingPerson.name} 
+										class="w-full h-full object-cover"
+									/>
+								{:else if pendingImageAction === 'delete'}
+									<User class="w-8 h-8 text-gray-600 dark:text-gray-400" />
+								{:else if editingPerson.image_path}
+									<img 
+										src="/api/images/people/{editingPerson.image_path}?v={new Date(editingPerson.updated_at).getTime()}" 
+										alt={editingPerson.name} 
+										class="w-full h-full object-cover"
+									/>
+								{:else}
+									<User class="w-8 h-8 text-gray-600 dark:text-gray-400" />
+								{/if}
+							</div>
+							{#if pendingImageAction}
+								<div class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center" title="Pending change">
+									<span class="text-white text-xs font-bold">!</span>
+								</div>
+							{/if}
+						</div>
+						<div class="flex gap-2">
+							<input
+								type="file"
+								accept="image/jpeg,image/jpg,image/png,image/webp"
+								onchange={handleImageUpload}
+								class="hidden"
+								bind:this={fileInputRef}
+								disabled={uploadingImage}
+							/>
+							<button
+								type="button"
+								onclick={() => fileInputRef?.click()}
+								class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center gap-2"
+								disabled={uploadingImage}
+							>
+								<Upload class="w-4 h-4" />
+								Upload
+							</button>
+							{#if (editingPerson.image_path && pendingImageAction !== 'delete') || pendingImageAction === 'upload'}
+								<button
+									type="button"
+									onclick={handleDeleteImage}
+									class="px-3 py-1.5 text-sm border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+									disabled={uploadingImage}
+								>
+									<X class="w-4 h-4" />
+									Remove
+								</button>
+							{/if}
+						</div>
+					</div>
+					{#if imageUploadError}
+						<p class="mt-2 text-sm text-red-600 dark:text-red-400">{imageUploadError}</p>
+					{/if}
+					{#if uploadingImage}
+						<p class="mt-2 text-sm text-blue-600 dark:text-blue-400">Uploading image...</p>
+					{/if}
+					{#if pendingImageAction && !uploadingImage && !imageUploadError}
+						<p class="mt-2 text-xs text-yellow-600 dark:text-yellow-400">Pending: Click "Update" to save changes</p>
+					{/if}
+				</div>
+
 				<div>
 					<label for="edit-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
 						Name

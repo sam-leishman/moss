@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export const createTablesSQL = `
 -- Schema version tracking
@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS person (
 	role TEXT NOT NULL CHECK(role IN ('artist', 'performer')),
 	library_id INTEGER,
 	is_global INTEGER NOT NULL DEFAULT 0 CHECK(is_global IN (0, 1)),
+	image_path TEXT,
 	created_at TEXT NOT NULL DEFAULT (datetime('now')),
 	updated_at TEXT NOT NULL DEFAULT (datetime('now')),
 	FOREIGN KEY (library_id) REFERENCES library(id) ON DELETE CASCADE,

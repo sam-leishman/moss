@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { User } from 'lucide-svelte';
+	import { User, Upload, X } from 'lucide-svelte';
 	import type { Person, ArtistProfile, PerformerProfile, Media, Library } from '$lib/server/db';
 	import type { MediaType } from '$lib/server/security';
 	import MediaGrid from '$lib/components/MediaGrid.svelte';
@@ -40,6 +40,9 @@
 	let showSelectAllPagesBanner = $state(false);
 	let isSelectingAllPages = $state(false);
 	let selectAllPagesError = $state<string | null>(null);
+	let uploadingImage = $state(false);
+	let imageUploadError = $state<string | null>(null);
+	let fileInputRef = $state<HTMLInputElement | null>(null);
 
 	const MAX_BULK_SELECT_ITEMS = 10000;
 
@@ -151,6 +154,74 @@
 	const formatStyleLabel = (style: string | null): string => {
 		if (!style) return 'Not specified';
 		return style.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+	};
+
+	const handleImageUpload = async (event: Event) => {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		
+		if (!file || !person) return;
+
+		const maxSize = 10 * 1024 * 1024;
+		if (file.size > maxSize) {
+			imageUploadError = 'Image must be smaller than 10MB';
+			return;
+		}
+
+		const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+		if (!allowedTypes.includes(file.type)) {
+			imageUploadError = 'Only JPEG, PNG, and WebP images are allowed';
+			return;
+		}
+
+		uploadingImage = true;
+		imageUploadError = null;
+
+		try {
+			const formData = new FormData();
+			formData.append('image', file);
+
+			const response = await fetch(`/api/people/${personId}/image`, {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!response.ok) {
+				const data = await response.json();
+				throw new Error(data.message || 'Failed to upload image');
+			}
+
+			await loadPerson();
+		} catch (err) {
+			imageUploadError = err instanceof Error ? err.message : 'Failed to upload image';
+		} finally {
+			uploadingImage = false;
+			if (input) input.value = '';
+		}
+	};
+
+	const handleDeleteImage = async () => {
+		if (!person || !confirm('Are you sure you want to delete this image?')) return;
+
+		uploadingImage = true;
+		imageUploadError = null;
+
+		try {
+			const response = await fetch(`/api/people/${personId}/image`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				const data = await response.json();
+				throw new Error(data.message || 'Failed to delete image');
+			}
+
+			await loadPerson();
+		} catch (err) {
+			imageUploadError = err instanceof Error ? err.message : 'Failed to delete image';
+		} finally {
+			uploadingImage = false;
+		}
 	};
 
 	const handleSearchChange = (query: string) => {
@@ -365,12 +436,63 @@
 	<div class="flex flex-col h-full">
 		<div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 rounded-lg p-6">
 			<div class="flex items-start gap-6">
-				<div class="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-					<User class="w-10 h-10 text-gray-600 dark:text-gray-400" />
+				<div class="relative group">
+					<div class="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+						{#if person.image_path}
+							<img 
+								src="/api/images/people/{person.image_path}?v={new Date(person.updated_at).getTime()}" 
+								alt={person.name} 
+								class="w-full h-full object-cover"
+							/>
+						{:else}
+							<User class="w-10 h-10 text-gray-600 dark:text-gray-400" />
+						{/if}
+					</div>
+					<div class="absolute inset-0 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+						<input
+							type="file"
+							accept="image/jpeg,image/jpg,image/png,image/webp"
+							onchange={handleImageUpload}
+							class="hidden"
+							bind:this={fileInputRef}
+							disabled={uploadingImage}
+						/>
+						<button
+							type="button"
+							onclick={() => fileInputRef?.click()}
+							class="p-1.5 bg-white dark:bg-gray-800 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+							title="Upload image"
+							disabled={uploadingImage}
+						>
+							<Upload class="w-4 h-4 text-gray-700 dark:text-gray-300" />
+						</button>
+						{#if person.image_path}
+							<button
+								type="button"
+								onclick={handleDeleteImage}
+								class="p-1.5 bg-white dark:bg-gray-800 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+								title="Delete image"
+								disabled={uploadingImage}
+							>
+								<X class="w-4 h-4 text-red-600 dark:text-red-400" />
+							</button>
+						{/if}
+					</div>
 				</div>
 				<div class="flex-1">
 					<h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{person.name}</h1>
 					<p class="text-lg text-gray-600 dark:text-gray-400 capitalize mb-4">{person.role}</p>
+					
+					{#if imageUploadError}
+						<div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+							{imageUploadError}
+						</div>
+					{/if}
+					{#if uploadingImage}
+						<div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+							Uploading image...
+						</div>
+					{/if}
 					
 					{#if person.role === 'artist' && profile}
 						<div class="space-y-2">
@@ -602,11 +724,10 @@
 {/if}
 
 {#if showBulkEditPanel}
-		<BulkEditingPanel
-			selectedCount={selectedMediaIds.size}
-			selectedMediaIds={Array.from(selectedMediaIds)}
-			onComplete={handleBulkEditComplete}
-			onClose={handleBulkEditClose}
-		/>
-	{/if}
+	<BulkEditingPanel
+		selectedCount={selectedMediaIds.size}
+		selectedMediaIds={Array.from(selectedMediaIds)}
+		onComplete={handleBulkEditComplete}
+		onClose={handleBulkEditClose}
+	/>
 {/if}

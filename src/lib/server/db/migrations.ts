@@ -267,6 +267,31 @@ export const migrations: Migration[] = [
 			db.exec('DROP TABLE IF EXISTS user');
 			db.exec('DELETE FROM schema_version WHERE version = 5');
 		}
+	},
+	{
+		version: 6,
+		up: (db: Database.Database) => {
+			db.exec(`ALTER TABLE person ADD COLUMN image_path TEXT`);
+			
+			const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
+			stmt.run(6);
+		},
+		down: (db: Database.Database) => {
+			db.exec(`
+				CREATE TABLE person_backup AS SELECT 
+					id, name, role, library_id, is_global, created_at, updated_at
+				FROM person
+			`);
+			db.exec('DROP TABLE person');
+			db.exec('ALTER TABLE person_backup RENAME TO person');
+			db.exec(`
+				CREATE INDEX IF NOT EXISTS idx_person_name ON person(name);
+				CREATE INDEX IF NOT EXISTS idx_person_role ON person(role);
+				CREATE INDEX IF NOT EXISTS idx_person_library_id ON person(library_id);
+				CREATE INDEX IF NOT EXISTS idx_person_is_global ON person(is_global);
+			`);
+			db.exec('DELETE FROM schema_version WHERE version = 6');
+		}
 	}
 ];
 

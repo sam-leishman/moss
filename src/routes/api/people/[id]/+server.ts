@@ -3,6 +3,7 @@ import { getDatabase } from '$lib/server/db';
 import { sanitizeInteger, sanitizePersonName, sanitizePersonRole } from '$lib/server/security/sanitizer';
 import { DuplicateEntryError, ValidationError, handleError } from '$lib/server/errors';
 import { getLogger } from '$lib/server/logging';
+import { getPersonImageManager } from '$lib/server/images';
 import type { Person, ArtistProfile, PerformerProfile } from '$lib/server/db';
 import type { RequestHandler } from './$types';
 
@@ -186,6 +187,11 @@ export const DELETE: RequestHandler = async ({ params }) => {
 		const person = db.prepare('SELECT * FROM person WHERE id = ?').get(personId) as Person | undefined;
 		if (!person) {
 			error(404, 'Person not found');
+		}
+
+		if (person.image_path) {
+			const imageManager = getPersonImageManager();
+			await imageManager.deletePersonImage(personId);
 		}
 
 		const result = db.prepare('DELETE FROM person WHERE id = ?').run(personId);
