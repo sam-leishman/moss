@@ -17,6 +17,7 @@
 	let profile = $state<ArtistProfile | PerformerProfile | null>(null);
 	let mediaItems = $state<Media[]>([]);
 	let totalItems = $state(0);
+	let totalMediaCount = $state(0);
 	let currentPage = $state(1);
 	let totalPages = $state(0);
 	let libraries = $state<Library[]>([]);
@@ -91,6 +92,7 @@
 		}
 	};
 
+
 	const loadMedia = async () => {
 		mediaLoading = true;
 		
@@ -128,6 +130,9 @@
 
 			const data = await response.json();
 			mediaItems = data.items;
+			if (totalMediaCount === 0) {
+				totalMediaCount = data.total;
+			}
 			totalItems = data.total;
 			totalPages = data.totalPages;
 		} catch (err) {
@@ -392,7 +397,7 @@
 					{/if}
 
 					<div class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-						<p>{totalItems} media {totalItems === 1 ? 'item' : 'items'}</p>
+						<p>{totalMediaCount} media {totalMediaCount === 1 ? 'item' : 'items'}</p>
 					</div>
 				</div>
 			</div>
