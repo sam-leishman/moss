@@ -6,18 +6,18 @@ import { ValidationError, DuplicateEntryError, handleError } from '$lib/server/e
 import { getLogger } from '$lib/server/logging';
 import { scanLibrary } from '$lib/server/scanner/library-scanner';
 import type { Library } from '$lib/server/db';
-import { existsSync } from 'fs';
+import { requireAuth, requireAdmin, filterLibrariesByAccess } from '$lib/server/auth';
+import type { RequestHandler } from './$types';
 
 const logger = getLogger('api:libraries');
 
-export const GET = async () => {
+export const GET: RequestHandler = async ({ locals }) => {
 	try {
+		requireAuth(locals);
 		const db = getDatabase();
-		const libraries = db.prepare('SELECT * FROM library ORDER BY created_at DESC').all() as Library[];
+		const allLibraries = db.prepare('SELECT * FROM library ORDER BY created_at DESC').all() as Library[];
 		
-		// Note: Path status checks are performed on-demand in other endpoints (scan, layout load)
-		// to avoid N+1 filesystem checks on every GET request. This endpoint returns cached status.
-		// If real-time status is needed, consider implementing a background job or websocket updates.
+		const libraries = filterLibrariesByAccess(locals, allLibraries);
 		
 		return json({ libraries });
 	} catch (error) {
@@ -26,8 +26,9 @@ export const GET = async () => {
 	}
 };
 
-export const POST = async ({ request }: { request: Request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
+		const user = requireAdmin(locals);
 		const { name, folder_path } = await request.json();
 
 		if (!name || !folder_path) {
@@ -56,7 +57,7 @@ export const POST = async ({ request }: { request: Request }) => {
 
 		const library = db.prepare('SELECT * FROM library WHERE id = ?').get(result.lastInsertRowid) as Library;
 
-		logger.info(`Library created: ${sanitizedName} at ${validatedPath}`);
+		logger.info(`Library created by ${user.username}: ${sanitizedName} at ${validatedPath}`);
 		
 		// Automatically scan the library after creation
 		logger.info(`Starting initial scan for library: ${library.name} (id: ${library.id})`);

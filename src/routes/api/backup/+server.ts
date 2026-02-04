@@ -2,14 +2,16 @@ import { json } from '@sveltejs/kit';
 import { getDatabase, getDatabasePath } from '$lib/server/db';
 import { handleError, ValidationError } from '$lib/server/errors';
 import { getLogger } from '$lib/server/logging';
+import { requireAdmin } from '$lib/server/auth';
 import { copyFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import type { RequestHandler } from './$types';
 
 const logger = getLogger('api:backup');
 
-export const POST: RequestHandler = async () => {
+export const POST: RequestHandler = async ({ locals }) => {
 	try {
+		const user = requireAdmin(locals);
 		const db = getDatabase();
 		const dbPath = getDatabasePath();
 		
@@ -35,7 +37,7 @@ export const POST: RequestHandler = async () => {
 		// Copy only the main database file (WAL/SHM are transient and will be recreated)
 		copyFileSync(dbPath, backupPath);
 
-		logger.info(`Database backup created: ${backupPath}`);
+		logger.info(`Database backup created by ${user.username}: ${backupPath}`);
 
 		return json({
 			success: true,

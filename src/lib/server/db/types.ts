@@ -69,3 +69,29 @@ export interface SchemaVersion {
 	version: number;
 	applied_at: string;
 }
+
+export interface User {
+	id: number;
+	username: string;
+	password_hash: string;
+	role: 'admin' | 'user';
+	is_active: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface Session {
+	id: string;
+	user_id: number;
+	expires_at: string;
+	created_at: string;
+	last_used_at: string;
+	user_agent: string | null;
+	ip_address: string | null;
+}
+
+export interface LibraryPermission {
+	user_id: number;
+	library_id: number;
+	created_at: string;
+}

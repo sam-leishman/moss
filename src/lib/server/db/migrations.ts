@@ -206,6 +206,67 @@ export const migrations: Migration[] = [
 			
 			db.exec('DELETE FROM schema_version WHERE version = 4');
 		}
+	},
+	{
+		version: 5,
+		up: async (db: Database.Database) => {
+			const { hash } = await import('@node-rs/argon2');
+			
+			db.exec(`
+				CREATE TABLE IF NOT EXISTS user (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+					password_hash TEXT NOT NULL,
+					role TEXT NOT NULL CHECK(role IN ('admin', 'user')),
+					is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
+					created_at TEXT NOT NULL DEFAULT (datetime('now')),
+					updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+				)
+			`);
+			
+			db.exec(`
+				CREATE TABLE IF NOT EXISTS session (
+					id TEXT PRIMARY KEY,
+					user_id INTEGER NOT NULL,
+					expires_at TEXT NOT NULL,
+					created_at TEXT NOT NULL DEFAULT (datetime('now')),
+					last_used_at TEXT NOT NULL DEFAULT (datetime('now')),
+					user_agent TEXT,
+					ip_address TEXT,
+					FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+				)
+			`);
+			
+			db.exec(`
+				CREATE INDEX IF NOT EXISTS idx_session_user_id ON session(user_id);
+				CREATE INDEX IF NOT EXISTS idx_session_expires_at ON session(expires_at);
+			`);
+			
+			db.exec(`
+				CREATE TABLE IF NOT EXISTS library_permission (
+					user_id INTEGER NOT NULL,
+					library_id INTEGER NOT NULL,
+					created_at TEXT NOT NULL DEFAULT (datetime('now')),
+					PRIMARY KEY (user_id, library_id),
+					FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+					FOREIGN KEY (library_id) REFERENCES library(id) ON DELETE CASCADE
+				)
+			`);
+			
+			const defaultPasswordHash = await hash('admin');
+			db.prepare(
+				'INSERT INTO user (username, password_hash, role) VALUES (?, ?, ?)'
+			).run('admin', defaultPasswordHash, 'admin');
+			
+			const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
+			stmt.run(5);
+		},
+		down: (db: Database.Database) => {
+			db.exec('DROP TABLE IF EXISTS library_permission');
+			db.exec('DROP TABLE IF EXISTS session');
+			db.exec('DROP TABLE IF EXISTS user');
+			db.exec('DELETE FROM schema_version WHERE version = 5');
+		}
 	}
 ];
 

@@ -3,13 +3,15 @@ import { getDatabase } from '$lib/server/db';
 import { sanitizePersonName, sanitizePersonRole } from '$lib/server/security/sanitizer';
 import { DuplicateEntryError, ValidationError, handleError } from '$lib/server/errors';
 import { getLogger } from '$lib/server/logging';
+import { requireAuth, requireAdmin, getUserLibraries, isAdmin } from '$lib/server/auth';
 import type { Person } from '$lib/server/db';
 import type { RequestHandler } from './$types';
 
 const logger = getLogger('api:people');
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
+		const user = requireAuth(locals);
 		const db = getDatabase();
 		const role = url.searchParams.get('role');
 		const libraryId = url.searchParams.get('library_id');
@@ -28,6 +30,15 @@ export const GET: RequestHandler = async ({ url }) => {
 			// Get library-specific people and global people
 			conditions.push('(library_id = ? OR is_global = 1)');
 			params.push(parseInt(libraryId, 10));
+		} else if (!isAdmin(user)) {
+			// Non-admin users: only show people from their accessible libraries
+			const accessibleLibraries = getUserLibraries(db, user);
+			if (accessibleLibraries.length === 0) {
+				return json([]);
+			}
+			const placeholders = accessibleLibraries.map(() => '?').join(',');
+			conditions.push(`(library_id IN (${placeholders}) OR is_global = 1)`);
+			params.push(...accessibleLibraries);
 		}
 		
 		if (conditions.length > 0) {
@@ -45,8 +56,9 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
+		const user = requireAdmin(locals);
 		const { name, role, profile, library_id, is_global } = await request.json();
 
 		if (!name) {
@@ -105,7 +117,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const person = db.prepare('SELECT * FROM person WHERE id = ?').get(personId) as Person;
 
 		const scope = isGlobal ? 'global' : `library ${libraryId}`;
-		logger.info(`Person created: ${sanitizedName} (${sanitizedRole}, ${scope})`);
+		logger.info(`Person created by ${user.username}: ${sanitizedName} (${sanitizedRole}, ${scope})`);
 		
 		return json({ person }, { status: 201 });
 	} catch (error) {

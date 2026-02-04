@@ -11,5 +11,8 @@ export type {
 	ArtistProfile,
 	PerformerProfile,
 	MediaCredit,
-	SchemaVersion
+	SchemaVersion,
+	User,
+	Session,
+	LibraryPermission
 } from './types';

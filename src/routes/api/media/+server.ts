@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { getDatabase } from '$lib/server/db';
 import type { Media } from '$lib/server/db';
 import { sanitizeInteger, sanitizePositiveInteger, sanitizeMediaType } from '$lib/server/security';
+import { requireLibraryAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
 export interface MediaListResponse {
@@ -12,7 +13,7 @@ export interface MediaListResponse {
 	totalPages: number;
 }
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
 	const db = getDatabase();
 
 	const libraryIdParam = url.searchParams.get('library_id');
@@ -28,6 +29,9 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 
 	const libraryId = sanitizeInteger(libraryIdParam);
+	
+	requireLibraryAccess(locals, libraryId);
+	
 	const page = sanitizePositiveInteger(pageParam);
 	const pageSize = Math.min(sanitizePositiveInteger(pageSizeParam), 10000);
 	const offset = (page - 1) * pageSize;

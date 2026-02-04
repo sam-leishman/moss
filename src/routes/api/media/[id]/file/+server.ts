@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import { getDatabase } from '$lib/server/db';
 import type { Media } from '$lib/server/db';
 import { sanitizeInteger } from '$lib/server/security';
+import { requireLibraryAccess } from '$lib/server/auth';
 import { existsSync, createReadStream, statSync } from 'fs';
 import { extname } from 'path';
 import type { RequestHandler } from './$types';
@@ -24,7 +25,7 @@ const MIME_TYPES = {
 	'.mov': 'video/quicktime'
 } as const;
 
-export const GET: RequestHandler = async ({ params, request }) => {
+export const GET: RequestHandler = async ({ params, request, locals }) => {
 	const db = getDatabase();
 	const mediaId = sanitizeInteger(params.id);
 
@@ -33,6 +34,8 @@ export const GET: RequestHandler = async ({ params, request }) => {
 	if (!media) {
 		error(404, 'Media not found');
 	}
+	
+	requireLibraryAccess(locals, media.library_id);
 
 	if (!existsSync(media.path)) {
 		error(404, 'Media file not found on disk');

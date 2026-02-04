@@ -2,11 +2,12 @@ import { error } from '@sveltejs/kit';
 import { getDatabase } from '$lib/server/db';
 import type { Media } from '$lib/server/db';
 import { sanitizeInteger } from '$lib/server/security';
+import { requireLibraryAccess } from '$lib/server/auth';
 import { getThumbnailGenerator } from '$lib/server/thumbnails';
 import { existsSync, createReadStream } from 'fs';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, locals }) => {
 	const db = getDatabase();
 	const mediaId = sanitizeInteger(params.id);
 
@@ -15,6 +16,8 @@ export const GET: RequestHandler = async ({ params }) => {
 	if (!media) {
 		error(404, 'Media not found');
 	}
+	
+	requireLibraryAccess(locals, media.library_id);
 
 	if (!existsSync(media.path)) {
 		error(404, 'Media file not found on disk');
