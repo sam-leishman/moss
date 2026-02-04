@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import { Image, Tag, Users, Wrench } from 'lucide-svelte';
 	import type { ComponentType } from 'svelte';
+	import { authStore } from '$lib/stores/auth.svelte';
 
 	interface SidebarProps {
 		libraryId: number | null;
@@ -61,12 +62,12 @@
 			icon: Users,
 			isActive: isActive(`/libraries/${libraryId}/people`)
 		},
-		{
+		...(authStore.isAdmin ? [{
 			href: `/libraries/${libraryId}/manage`,
 			label: 'Manage',
 			icon: Wrench,
 			isActive: isActive(`/libraries/${libraryId}/manage`)
-		}
+		}] : [])
 	] : []);
 </script>
 

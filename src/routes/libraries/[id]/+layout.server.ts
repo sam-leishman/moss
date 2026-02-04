@@ -55,6 +55,7 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
 	}
 
 	return {
-		library
+		library,
+		user: locals.user
 	};
 };

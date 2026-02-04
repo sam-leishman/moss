@@ -3,6 +3,9 @@
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
+	
+	// Check if current user is admin
+	const isAdmin = $derived(data.user?.role === 'admin');
 </script>
 
 {#if data.library.path_status === 'missing' || data.library.path_status === 'error'}
@@ -21,13 +24,15 @@
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
-						<a
-							href="/libraries/{data.library.id}/manage"
-							class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-amber-900 dark:text-amber-200 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded-md hover:bg-amber-50 dark:hover:bg-gray-700 transition-colors"
-						>
-							<Wrench class="w-4 h-4" />
-							<span>Manage Library</span>
-						</a>
+						{#if isAdmin}
+							<a
+								href="/libraries/{data.library.id}/manage"
+								class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-amber-900 dark:text-amber-200 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded-md hover:bg-amber-50 dark:hover:bg-gray-700 transition-colors"
+							>
+								<Wrench class="w-4 h-4" />
+								<span>Manage Library</span>
+							</a>
+						{/if}
 					</div>
 				</div>
 			</div>
