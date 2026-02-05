@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  moss:
+    image: moss:latest
+    container_name: moss
+    ports:
+      - "3000:3000"
+    volumes:
+      - /path/to/your/media:/media:ro
+      - /path/to/your/config:/config
+      - /path/to/your/metadata:/metadata
+    environment:
+      - TZ=America/Denver
+      # Optional: Override default container paths (usually not needed)
+      # - MEDIA_PATH=/media
+      # - CONFIG_DIR=/config
+      # - METADATA_DIR=/metadata
+      - PUID=1000
+      - PGID=1000
+    restart: unless-stopped

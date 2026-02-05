@@ -36,50 +36,6 @@ export const migrations: Migration[] = [
 		}
 	},
 	{
-		version: 2,
-		up: (db: Database.Database) => {
-			// SQLite ALTER TABLE only supports constant defaults, not function calls
-			// Add column with constant default, then update existing rows
-			db.exec(`ALTER TABLE media ADD COLUMN birthtime TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'`);
-			
-			// Update existing rows to use mtime as birthtime (best approximation for existing data)
-			db.exec(`UPDATE media SET birthtime = mtime WHERE birthtime = '1970-01-01T00:00:00.000Z'`);
-			
-			const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
-			stmt.run(2);
-		},
-		down: (db: Database.Database) => {
-			db.exec(`
-				CREATE TABLE media_backup AS SELECT 
-					id, library_id, path, title, media_type, size, mtime, created_at, updated_at
-				FROM media
-			`);
-			db.exec('DROP TABLE media');
-			db.exec('ALTER TABLE media_backup RENAME TO media');
-			db.exec('DELETE FROM schema_version WHERE version = 2');
-		}
-	},
-	{
-		version: 3,
-		up: (db: Database.Database) => {
-			db.exec(`ALTER TABLE library ADD COLUMN path_status TEXT NOT NULL DEFAULT 'ok' CHECK(path_status IN ('ok', 'missing', 'error'))`);
-			db.exec(`ALTER TABLE library ADD COLUMN path_error TEXT`);
-			
-			const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
-			stmt.run(3);
-		},
-		down: (db: Database.Database) => {
-			db.exec(`
-				CREATE TABLE library_backup AS SELECT 
-					id, name, folder_path, created_at, updated_at
-				FROM library
-			`);
-			db.exec('DROP TABLE library');
-			db.exec('ALTER TABLE library_backup RENAME TO library');
-			db.exec('DELETE FROM schema_version WHERE version = 3');
-		}
-	},
-	{
 		version: 4,
 		up: (db: Database.Database) => {
 			// Disable foreign keys temporarily for safe table recreation
@@ -320,76 +276,7 @@ export const migrations: Migration[] = [
 			db.exec('DELETE FROM schema_version WHERE version = 7');
 		}
 	},
-	{
-		version: 8,
-		up: (db: Database.Database) => {
-			db.pragma('foreign_keys = OFF');
-			
-			try {
-				db.exec(`
-					CREATE TABLE performer_profile_new (
-						person_id INTEGER PRIMARY KEY,
-						birthday TEXT,
-						gender TEXT CHECK(gender IN ('male', 'female')),
-						created_at TEXT NOT NULL DEFAULT (datetime('now')),
-						updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-						FOREIGN KEY (person_id) REFERENCES person(id) ON DELETE CASCADE
-					)
-				`);
-				
-				// Convert existing age data to approximate birth years
-				// Calculate birthday as January 1st of (current_year - age)
-				db.exec(`
-					INSERT INTO performer_profile_new (person_id, birthday, created_at, updated_at)
-					SELECT 
-						person_id,
-						CASE 
-							WHEN age IS NOT NULL THEN 
-								printf('%04d-01-01', CAST(strftime('%Y', 'now') AS INTEGER) - age)
-							ELSE NULL
-						END as birthday,
-						created_at,
-						updated_at
-					FROM performer_profile
-				`);
-				
-				db.exec('DROP TABLE performer_profile');
-				db.exec('ALTER TABLE performer_profile_new RENAME TO performer_profile');
-				
-				const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
-				stmt.run(8);
-			} finally {
-				db.pragma('foreign_keys = ON');
-			}
-		},
-		down: (db: Database.Database) => {
-			db.pragma('foreign_keys = OFF');
-			
-			try {
-				db.exec(`
-					CREATE TABLE performer_profile_old (
-						person_id INTEGER PRIMARY KEY,
-						age INTEGER CHECK(age >= 0),
-						created_at TEXT NOT NULL DEFAULT (datetime('now')),
-						updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-						FOREIGN KEY (person_id) REFERENCES person(id) ON DELETE CASCADE
-					)
-				`);
-				
-				db.exec(`
-					INSERT INTO performer_profile_old (person_id, created_at, updated_at)
-					SELECT person_id, created_at, updated_at FROM performer_profile
-				`);
-				
-				db.exec('DROP TABLE performer_profile');
-				db.exec('ALTER TABLE performer_profile_old RENAME TO performer_profile');
-				db.exec('DELETE FROM schema_version WHERE version = 8');
-			} finally {
-				db.pragma('foreign_keys = ON');
-			}
-		}
-	}
-];
+	];
 
 export function getCurrentVersion(db: Database.Database): number {
 	try {

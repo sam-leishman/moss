@@ -12,10 +12,6 @@ services:
       - /volume1/docker/moss/metadata:/metadata
     environment:
       - TZ=America/Denver
-      - NODE_ENV=production
-      - PORT=3000
-      - HOST=0.0.0.0
-      - MEDIA_PATH=/media
-      - CONFIG_DIR=/config
-      - METADATA_DIR=/metadata
+      - PUID=1000
+      - PGID=1000
     restart: unless-stopped
