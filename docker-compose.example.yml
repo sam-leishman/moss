@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   moss:
-    image: moss:latest
+    image: ghcr.io/sam-leishman/moss:latest
     container_name: moss
     ports:
       - "3000:3000"
