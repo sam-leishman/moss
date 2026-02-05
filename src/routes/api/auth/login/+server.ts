@@ -45,8 +45,8 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress 
 		cookies.set('session', session.id, {
 			path: '/',
 			httpOnly: true,
-			sameSite: 'strict',
-			secure: process.env.NODE_ENV === 'production',
+			sameSite: 'lax',
+			secure: process.env.COOKIE_SECURE === 'true',
 			maxAge: rememberMe ? 365 * 24 * 60 * 60 : 30 * 24 * 60 * 60
 		});
 		
