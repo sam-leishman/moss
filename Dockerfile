@@ -32,11 +32,12 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Create non-root user with configurable UID/GID
-ARG PUID=1000
-ARG PGID=1000
-RUN if ! getent group ${PGID} >/dev/null; then addgroup -g ${PGID} moss; else addgroup moss; fi && \
-    if ! getent passwd ${PUID} >/dev/null; then adduser -D -u ${PUID} -G moss moss; else adduser -D moss -G moss; fi && \
+# Install su-exec for stepping down from root
+RUN apk add --no-cache su-exec
+
+# Create default moss user and required directories
+RUN addgroup -g 1000 moss 2>/dev/null || addgroup moss && \
+    adduser -D -u 1000 -G moss moss 2>/dev/null || adduser -D -G moss moss && \
     mkdir -p /config /metadata /media && \
     chown -R moss:moss /app /config /metadata /media
 
@@ -44,13 +45,17 @@ RUN if ! getent group ${PGID} >/dev/null; then addgroup -g ${PGID} moss; else ad
 RUN npm install -g pnpm
 
 # Copy package files
-COPY --chown=moss:moss package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Install production dependencies only
 RUN pnpm install --prod --frozen-lockfile
 
 # Copy built app from builder
-COPY --chown=moss:moss --from=builder /app/build ./build
+COPY --from=builder /app/build ./build
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Expose port
 EXPOSE 3000
@@ -60,13 +65,12 @@ VOLUME ["/config", "/metadata"]
 
 # Set environment variables
 ENV NODE_ENV=production
+ENV PUID=1000
+ENV PGID=1000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
 
-# Switch to non-root user
-USER moss
-
-# Start the app
-CMD ["node", "build"]
+# Entrypoint handles UID/GID mapping and drops privileges
+ENTRYPOINT ["/docker-entrypoint.sh"]
