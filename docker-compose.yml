@@ -14,4 +14,6 @@ services:
       - TZ=America/Denver
       - PUID=1000
       - PGID=1000
+      - CONFIG_DIR=/config
+      - METADATA_DIR=/metadata
     restart: unless-stopped

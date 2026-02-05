@@ -3,7 +3,7 @@ import { runMigrations } from './migrations';
 
 let initialized = false;
 
-export function initializeDatabase(): void {
+export async function initializeDatabase(): Promise<void> {
 	if (initialized) {
 		return;
 	}
@@ -11,7 +11,7 @@ export function initializeDatabase(): void {
 	const db = getDatabase();
 	
 	try {
-		runMigrations(db);
+		await runMigrations(db);
 		initialized = true;
 		console.log('Database initialized successfully');
 	} catch (error) {

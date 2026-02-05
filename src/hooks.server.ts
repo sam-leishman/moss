@@ -6,7 +6,10 @@ import type { Handle } from '@sveltejs/kit';
 
 const logger = getLogger('hooks');
 
-initializeDatabase();
+initializeDatabase().catch(error => {
+	console.error('Database initialization failed:', error);
+	process.exit(1);
+});
 
 // Periodic thumbnail cleanup to catch any orphaned thumbnails
 const startThumbnailCleanupJob = () => {

@@ -3,7 +3,7 @@ import { SCHEMA_VERSION, createTablesSQL, createIndexesSQL } from './schema';
 
 export interface Migration {
 	version: number;
-	up: (db: Database.Database) => void;
+	up: (db: Database.Database) => void | Promise<void>;
 	down?: (db: Database.Database) => void;
 }
 
@@ -287,7 +287,7 @@ export function getCurrentVersion(db: Database.Database): number {
 	}
 }
 
-export function runMigrations(db: Database.Database): void {
+export async function runMigrations(db: Database.Database): Promise<void> {
 	const currentVersion = getCurrentVersion(db);
 	
 	if (currentVersion === SCHEMA_VERSION) {
@@ -313,12 +313,12 @@ export function runMigrations(db: Database.Database): void {
 	for (const migration of pendingMigrations) {
 		console.log(`Applying migration ${migration.version}...`);
 		
-		const transaction = db.transaction(() => {
-			migration.up(db);
-		});
-		
 		try {
-			transaction();
+			// Check if migration is async
+			const result = migration.up(db);
+			if (result && typeof result.then === 'function') {
+				await result;
+			}
 			console.log(`Migration ${migration.version} completed successfully`);
 		} catch (error) {
 			console.error(`Migration ${migration.version} failed:`, error);
