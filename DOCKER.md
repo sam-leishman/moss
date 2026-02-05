@@ -5,7 +5,7 @@ This application is designed to run as a Docker container on Synology NAS, simil
 ## Building the Image
 
 ```bash
-docker build -t xview:latest .
+docker build -t moss:latest .
 ```
 
 ## Deployment on Synology
@@ -17,8 +17,8 @@ docker build -t xview:latest .
 
 ## Volume Mounts
 
-- `/media` - Read-only media files (e.g., `/volume1/xview/media`)
-- `/config` - Persistent configuration and database (e.g., `/volume1/docker/xview/config`)
+- `/media` - Read-only media files (e.g., `/volume1/moss/media`)
+- `/config` - Persistent configuration and database (e.g., `/volume1/docker/moss/config`)
 
 ## Important Development Notes
 

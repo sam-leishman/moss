@@ -1,7 +1,7 @@
 # Like Feature Implementation Summary
 
 ## Overview
-Successfully implemented a complete like feature for XView that allows users to like/unlike media items with optimistic UI updates, proper authentication, and library permission filtering.
+Successfully implemented a complete like feature for Moss that allows users to like/unlike media items with optimistic UI updates, proper authentication, and library permission filtering.
 
 ## Architecture
 - **Backend**: SQLite database with `user_media_like` table, RESTful API endpoints
@@ -218,7 +218,7 @@ class LikesStore {
 
 ## Conclusion
 
-The like feature implementation is complete, robust, and follows all established patterns in the XView codebase. It provides a smooth user experience with optimistic updates, proper security, and excellent performance. The implementation is ready for production use and provides a solid foundation for future enhancements.
+The like feature implementation is complete, robust, and follows all established patterns in the Moss codebase. It provides a smooth user experience with optimistic updates, proper security, and excellent performance. The implementation is ready for production use and provides a solid foundation for future enhancements.
 
 ### Key Success Metrics
 - ✅ All requirements from implementation plan met
@@ -228,4 +228,4 @@ The like feature implementation is complete, robust, and follows all established
 - ✅ Comprehensive error handling
 - ✅ Excellent user experience with reactive UI
 
-The feature successfully integrates with XView's existing architecture while maintaining the high standards of code quality and user experience established in the project.
+The feature successfully integrates with Moss's existing architecture while maintaining the high standards of code quality and user experience established in the project.

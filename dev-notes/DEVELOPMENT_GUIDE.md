@@ -1,8 +1,8 @@
-# XView Development Guide
+# Moss Development Guide
 
 ## Core Philosophy
 
-**What XView Is:**
+**What Moss Is:**
 A media library manager for NAS deployments. Users create libraries pointing to folders, the app scans for media files, and provides tagging and credit attribution.
 
 **Fundamental Principles:**
@@ -23,7 +23,7 @@ These are unchanging rules enforced by the architecture:
 4. **Source files are read-only** - `/media` volume is mounted read-only
 5. **Icons must be Lucide** - No other icon libraries allowed
 6. **Dark mode is mandatory** - Every component must have `dark:` variants
-7. **Database is SQLite** - Single file at `/config/xview.db`
+7. **Database is SQLite** - Single file at `/config/moss.db`
 8. **Migrations run automatically** - On server startup via `hooks.server.ts`
 
 ---
@@ -130,7 +130,7 @@ These are unchanging rules enforced by the architecture:
 ### Environment
 - **Development:** Uses `test-media/`, `test-config/`, `test-metadata/` if Docker volumes not mounted
 - **Production:** Requires `/media` (read-only), `/config`, `/metadata` volumes
-- **Database:** Single SQLite file at `$CONFIG_DIR/xview.db`
+- **Database:** Single SQLite file at `$CONFIG_DIR/moss.db`
 
 ### Key Patterns
 - **Database:** Singleton via `getDatabase()` from `src/lib/server/db`

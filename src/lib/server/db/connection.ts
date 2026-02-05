@@ -15,7 +15,7 @@ export function getDatabase(): Database.Database {
 		mkdirSync(configDir, { recursive: true });
 	}
 
-	const dbPath = join(configDir, 'xview.db');
+	const dbPath = join(configDir, 'moss.db');
 	
 	db = new Database(dbPath, {
 		verbose: process.env.NODE_ENV === 'development' ? console.log : undefined
@@ -39,7 +39,7 @@ export function closeDatabase(): void {
 
 export function getDatabasePath(): string {
 	const configDir = process.env.CONFIG_DIR || join(process.cwd(), 'test-config');
-	return join(configDir, 'xview.db');
+	return join(configDir, 'moss.db');
 }
 
 process.on('SIGINT', () => {

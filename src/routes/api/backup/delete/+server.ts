@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Prevent deletion of the main database file
-		if (backupFilename === 'xview.db') {
+		if (backupFilename === 'moss.db') {
 			throw new ValidationError('Cannot delete the main database file');
 		}
 

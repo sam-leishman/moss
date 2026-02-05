@@ -1,6 +1,6 @@
 # Scanner Module
 
-This module provides file system scanning and media type detection for XView.
+This module provides file system scanning and media type detection for Moss.
 
 ## Components
 

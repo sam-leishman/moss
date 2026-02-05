@@ -1,15 +1,15 @@
 version: '3.8'
 
 services:
-  xview:
-    image: xview:latest
-    container_name: xview
+  moss:
+    image: moss:latest
+    container_name: moss
     ports:
       - "3000:3000"
     volumes:
-      - /volume1/xview/media:/media:ro
-      - /volume1/docker/xview/config:/config
-      - /volume1/docker/xview/metadata:/metadata
+      - /volume1/moss/media:/media:ro
+      - /volume1/docker/moss/config:/config
+      - /volume1/docker/moss/metadata:/metadata
     environment:
       - TZ=America/Denver
       - NODE_ENV=production

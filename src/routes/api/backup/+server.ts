@@ -28,7 +28,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 		}
 		
 		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-		const backupPath = join(backupsDir, `xview-backup-${timestamp}.db`);
+		const backupPath = join(backupsDir, `moss-backup-${timestamp}.db`);
 
 		// Perform a checkpoint to ensure all WAL data is flushed to the main database file
 		// After this, the .db file contains all data and WAL/SHM files are not needed

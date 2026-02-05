@@ -1,6 +1,6 @@
 # Security Module
 
-This module provides comprehensive security features for XView including path validation, input sanitization, and middleware utilities.
+This module provides comprehensive security features for Moss including path validation, input sanitization, and middleware utilities.
 
 ## Components
 

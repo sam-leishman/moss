@@ -1,6 +1,6 @@
 # Database Module
 
-This module provides SQLite database functionality for XView using `better-sqlite3`.
+This module provides SQLite database functionality for Moss using `better-sqlite3`.
 
 ## Structure
 
@@ -34,8 +34,8 @@ const db = getDatabase();
 ### Database Configuration
 
 The database file is stored at:
-- Development: `./test-config/xview.db`
-- Production: `$CONFIG_DIR/xview.db` (Docker volume mount at `/config`)
+- Development: `./test-config/moss.db`
+- Production: `$CONFIG_DIR/moss.db` (Docker volume mount at `/config`)
 
 ### Pragmas
 

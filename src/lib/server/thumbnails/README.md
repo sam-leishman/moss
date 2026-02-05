@@ -1,6 +1,6 @@
 # Thumbnail Generation System
 
-This module handles thumbnail generation and caching for media files in XView.
+This module handles thumbnail generation and caching for media files in Moss.
 
 ## Features
 

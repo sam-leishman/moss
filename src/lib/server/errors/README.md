@@ -1,6 +1,6 @@
 # Error Handling Module
 
-Comprehensive error handling framework for XView with custom error types, error codes, and centralized error handling.
+Comprehensive error handling framework for Moss with custom error types, error codes, and centralized error handling.
 
 ## Features
 

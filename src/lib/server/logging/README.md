@@ -1,6 +1,6 @@
 # Logging Module
 
-Structured logging system for XView with configurable log levels and contextual logging.
+Structured logging system for Moss with configurable log levels and contextual logging.
 
 ## Features
 

@@ -86,7 +86,7 @@
 					>
 						<Menu class="w-6 h-6" />
 					</button>
-					<h1 class="text-2xl font-bold text-gray-900 dark:text-white">XView</h1>
+					<h1 class="text-2xl font-bold text-gray-900 dark:text-white">Moss</h1>
 					{#if isSettingsPage && lastLibraryId}
 						<a
 							href="/libraries/{lastLibraryId}"

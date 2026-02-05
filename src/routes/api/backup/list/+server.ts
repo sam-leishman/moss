@@ -19,7 +19,7 @@ export const GET: RequestHandler = async () => {
 		
 		const files = readdirSync(backupsDir);
 		const backupFiles = files
-			.filter(file => file.startsWith('xview-backup-') && file.endsWith('.db'))
+			.filter(file => file.startsWith('moss-backup-') && file.endsWith('.db'))
 			.map(file => {
 				const filePath = join(backupsDir, file);
 				const stats = statSync(filePath);

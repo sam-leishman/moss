@@ -15,7 +15,7 @@ To recreate this project with the same configuration:
 
 ```sh
 # recreate this project
-pnpm dlx sv create --template minimal --types ts --add prettier eslint tailwindcss="plugins:forms" sveltekit-adapter="adapter:node" --install pnpm xview
+pnpm dlx sv create --template minimal --types ts --add prettier eslint tailwindcss="plugins:forms" sveltekit-adapter="adapter:node" --install pnpm moss
 ```
 
 ## Developing

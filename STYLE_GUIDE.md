@@ -1,6 +1,6 @@
-# XView Style Guide
+# Moss Style Guide
 
-This document outlines the design system and styling conventions for the XView application. Follow these guidelines to maintain consistency across all components.
+This document outlines the design system and styling conventions for the Moss application. Follow these guidelines to maintain consistency across all components.
 
 ## Core Principles
 

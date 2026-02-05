@@ -41,7 +41,7 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
 	<div class="w-full max-w-md">
 		<div class="text-center mb-8">
-			<h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">XView</h1>
+			<h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">Moss</h1>
 			<p class="text-gray-600 dark:text-gray-400">Sign in to your account</p>
 		</div>
 
