@@ -55,7 +55,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Use lock to prevent concurrent restore operations
 		return await restoreLock.withLock('restore', async () => {
 			const dbPath = getDatabasePath();
-			const configDir = process.env.CONFIG_DIR || join(process.cwd(), 'test-config');
+			const configDir = process.env.CONFIG_DIR || (process.env.NODE_ENV === 'development' ? join(process.cwd(), 'test-config') : '/config');
 			const backupsDir = join(configDir, 'backups');
 			const emergencyBackupPath = join(backupsDir, `emergency-pre-restore-${Date.now()}.db`);
 
@@ -126,8 +126,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
 				// Success! Delete emergency backup
 				if (existsSync(emergencyBackupPath)) {
-					unlinkSync(emergencyBackupPath);
-					logger.info('Emergency backup deleted after successful restore');
+					try {
+						unlinkSync(emergencyBackupPath);
+						logger.info('Emergency backup deleted after successful restore');
+					} catch (cleanupError) {
+						const errorMessage = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+						logger.warn(`Failed to delete emergency backup (restore was successful): ${errorMessage}`);
+						logger.warn(`Emergency backup remains at: ${emergencyBackupPath}`);
+					}
 				}
 
 				const message = backupVersion < currentVersion
@@ -148,8 +154,10 @@ export const POST: RequestHandler = async ({ request }) => {
 				// Ensure database is reopened even on error
 				try {
 					getDatabase();
-				} catch {
-					// If we can't reopen, that's a critical error but we've already logged it
+					logger.info('Database connection successfully reopened after restore error');
+				} catch (reopenError) {
+					logger.error('CRITICAL: Failed to reopen database connection after restore error', reopenError instanceof Error ? reopenError : undefined);
+					logger.error('Application may be in an unstable state. Manual intervention required.');
 				}
 				throw restoreError;
 			}

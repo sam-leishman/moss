@@ -9,7 +9,7 @@ export function getDatabase(): Database.Database {
 		return db;
 	}
 
-	const configDir = process.env.CONFIG_DIR || join(process.cwd(), 'test-config');
+	const configDir = process.env.CONFIG_DIR || (process.env.NODE_ENV === 'development' ? join(process.cwd(), 'test-config') : '/config');
 	
 	if (!existsSync(configDir)) {
 		mkdirSync(configDir, { recursive: true });
@@ -38,7 +38,7 @@ export function closeDatabase(): void {
 }
 
 export function getDatabasePath(): string {
-	const configDir = process.env.CONFIG_DIR || join(process.cwd(), 'test-config');
+	const configDir = process.env.CONFIG_DIR || (process.env.NODE_ENV === 'development' ? join(process.cwd(), 'test-config') : '/config');
 	return join(configDir, 'moss.db');
 }
 

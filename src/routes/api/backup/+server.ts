@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 			throw new ValidationError('Database file not found');
 		}
 
-		const configDir = process.env.CONFIG_DIR || join(process.cwd(), 'test-config');
+		const configDir = process.env.CONFIG_DIR || (process.env.NODE_ENV === 'development' ? join(process.cwd(), 'test-config') : '/config');
 		const backupsDir = join(configDir, 'backups');
 		
 		// Create backups directory if it doesn't exist
