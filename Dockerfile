@@ -37,7 +37,8 @@ ARG PUID=1000
 ARG PGID=1000
 RUN if ! getent group ${PGID} >/dev/null; then addgroup -g ${PGID} moss; else addgroup moss; fi && \
     if ! getent passwd ${PUID} >/dev/null; then adduser -D -u ${PUID} -G moss moss; else adduser -D moss -G moss; fi && \
-    chown -R moss:moss /app
+    mkdir -p /config /metadata /media && \
+    chown -R moss:moss /app /config /metadata /media
 
 # Install pnpm
 RUN npm install -g pnpm
@@ -53,6 +54,9 @@ COPY --chown=moss:moss --from=builder /app/build ./build
 
 # Expose port
 EXPOSE 3000
+
+# Declare volumes for persistent data
+VOLUME ["/config", "/metadata"]
 
 # Set environment variables
 ENV NODE_ENV=production

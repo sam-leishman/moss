@@ -1,7 +1,8 @@
 import { error } from '@sveltejs/kit';
-import { readFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, resolve } from 'path';
+import { resolve, join } from 'path';
+import { existsSync, createReadStream } from 'fs';
+import { getMetadataDir } from '$lib/server/config';
+import type { RequestHandler } from './$types';
 import { getLogger } from '$lib/server/logging';
 import type { RequestEvent } from '@sveltejs/kit';
 
@@ -13,8 +14,7 @@ export const GET = async ({ params }: RequestEvent) => {
 			error(400, 'Invalid path');
 		}
 
-		const metadataDir = process.env.METADATA_DIR || join(process.cwd(), 'test-metadata');
-		const baseDir = resolve(metadataDir, 'images', 'people');
+		const baseDir = resolve(getMetadataDir(), 'images', 'people');
 		const imagePath = resolve(baseDir, params.path);
 
 		if (!imagePath.startsWith(baseDir + '/') && imagePath !== baseDir) {

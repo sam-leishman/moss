@@ -2,9 +2,18 @@ import { initializeDatabase, getDatabase } from '$lib/server/db';
 import { getThumbnailGenerator } from '$lib/server/thumbnails';
 import { getLogger } from '$lib/server/logging';
 import { validateSession, cleanupExpiredSessions } from '$lib/server/auth';
+import { validateStartupEnvironment } from '$lib/server/startup-validation';
 import type { Handle } from '@sveltejs/kit';
 
 const logger = getLogger('hooks');
+
+// Validate environment before initializing database
+try {
+	validateStartupEnvironment();
+} catch (error) {
+	console.error('Startup validation failed:', error);
+	process.exit(1);
+}
 
 initializeDatabase().catch(error => {
 	console.error('Database initialization failed:', error);

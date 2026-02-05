@@ -4,6 +4,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { createHash } from 'crypto';
 import type { MediaType } from '$lib/server/security';
 import { getLogger } from '$lib/server/logging';
+import { getMetadataDir, isDevelopment } from '$lib/server/config';
 
 const logger = getLogger();
 
@@ -26,17 +27,35 @@ export class ThumbnailGenerator {
 	private thumbnailsDir: string;
 
 	constructor() {
-		this.metadataDir = process.env.METADATA_DIR || join(process.cwd(), 'test-metadata');
+		this.metadataDir = getMetadataDir();
 		this.thumbnailsDir = join(this.metadataDir, 'thumbnails');
 		this.ensureDirectories();
 	}
 
 	private ensureDirectories(): void {
 		if (!existsSync(this.metadataDir)) {
-			mkdirSync(this.metadataDir, { recursive: true });
+			if (isDevelopment()) {
+				try {
+					mkdirSync(this.metadataDir, { recursive: true });
+				} catch (error) {
+					// Ignore if directory was created by another process
+					if (!existsSync(this.metadataDir)) {
+						throw error;
+					}
+				}
+			} else {
+				throw new Error(`Metadata directory ${this.metadataDir} does not exist. Ensure the directory is mounted and accessible.`);
+			}
 		}
 		if (!existsSync(this.thumbnailsDir)) {
-			mkdirSync(this.thumbnailsDir, { recursive: true });
+			try {
+				mkdirSync(this.thumbnailsDir, { recursive: true });
+			} catch (error) {
+				// Ignore if directory was created by another process
+				if (!existsSync(this.thumbnailsDir)) {
+					throw error;
+				}
+			}
 		}
 	}
 

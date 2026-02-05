@@ -1,13 +1,14 @@
 import { json } from '@sveltejs/kit';
-import Database from 'better-sqlite3';
-import { closeDatabase, getDatabasePath, getDatabase } from '$lib/server/db';
 import { handleError, ValidationError } from '$lib/server/errors';
+import { validateBackupFilename, restoreLock } from '$lib/server/backup';
+import { getDatabasePath, closeDatabase, getDatabase } from '$lib/server/db';
 import { getLogger } from '$lib/server/logging';
+import { getConfigDir } from '$lib/server/config';
 import { getCurrentVersion, runMigrations } from '$lib/server/db/migrations';
 import { SCHEMA_VERSION } from '$lib/server/db/schema';
-import { validateBackupFilename, restoreLock } from '$lib/server/backup';
 import { copyFileSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
+import Database from 'better-sqlite3';
 import type { RequestHandler } from './$types';
 
 const logger = getLogger('api:backup:restore');
@@ -55,8 +56,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Use lock to prevent concurrent restore operations
 		return await restoreLock.withLock('restore', async () => {
 			const dbPath = getDatabasePath();
-			const configDir = process.env.CONFIG_DIR || (process.env.NODE_ENV === 'development' ? join(process.cwd(), 'test-config') : '/config');
-			const backupsDir = join(configDir, 'backups');
+			const backupsDir = join(getConfigDir(), 'backups');
 			const emergencyBackupPath = join(backupsDir, `emergency-pre-restore-${Date.now()}.db`);
 
 			// Close the current database connection

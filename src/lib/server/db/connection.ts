@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
+import { getConfigDir, isDevelopment } from '$lib/server/config';
 
 let db: Database.Database | null = null;
 
@@ -9,10 +10,22 @@ export function getDatabase(): Database.Database {
 		return db;
 	}
 
-	const configDir = process.env.CONFIG_DIR || (process.env.NODE_ENV === 'development' ? join(process.cwd(), 'test-config') : '/config');
+	const configDir = getConfigDir();
 	
+	// Ensure directory exists - use try-catch to handle race conditions
 	if (!existsSync(configDir)) {
-		mkdirSync(configDir, { recursive: true });
+		if (isDevelopment()) {
+			try {
+				mkdirSync(configDir, { recursive: true });
+			} catch (error) {
+				// Ignore if directory was created by another process
+				if (!existsSync(configDir)) {
+					throw error;
+				}
+			}
+		} else {
+			throw new Error(`Config directory ${configDir} does not exist. Ensure the directory is mounted and accessible.`);
+		}
 	}
 
 	const dbPath = join(configDir, 'moss.db');
@@ -38,8 +51,7 @@ export function closeDatabase(): void {
 }
 
 export function getDatabasePath(): string {
-	const configDir = process.env.CONFIG_DIR || (process.env.NODE_ENV === 'development' ? join(process.cwd(), 'test-config') : '/config');
-	return join(configDir, 'moss.db');
+	return join(getConfigDir(), 'moss.db');
 }
 
 process.on('SIGINT', () => {

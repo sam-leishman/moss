@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { handleError } from '$lib/server/errors';
 import { getLogger } from '$lib/server/logging';
+import { getConfigDir } from '$lib/server/config';
 import { readdirSync, statSync, existsSync } from 'fs';
 import { join } from 'path';
 import type { RequestHandler } from './$types';
@@ -9,8 +10,7 @@ const logger = getLogger('api:backup:list');
 
 export const GET: RequestHandler = async () => {
 	try {
-		const configDir = process.env.CONFIG_DIR || (process.env.NODE_ENV === 'development' ? join(process.cwd(), 'test-config') : '/config');
-		const backupsDir = join(configDir, 'backups');
+		const backupsDir = join(getConfigDir(), 'backups');
 		
 		// Return empty list if backups directory doesn't exist
 		if (!existsSync(backupsDir)) {

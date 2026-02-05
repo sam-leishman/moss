@@ -3,6 +3,7 @@ import { writeFile, mkdir, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import sharp from 'sharp';
 import { getLogger } from '$lib/server/logging';
+import { getMetadataDir } from '$lib/server/config';
 
 const logger = getLogger('images:person');
 
@@ -17,7 +18,7 @@ export class PersonImageManager {
 	private thumbnailsDir: string;
 
 	constructor() {
-		this.metadataDir = process.env.METADATA_DIR || join(process.cwd(), 'test-metadata');
+		this.metadataDir = getMetadataDir();
 		this.imagesDir = join(this.metadataDir, 'images', 'people');
 		this.thumbnailsDir = join(this.imagesDir, 'thumbnails');
 	}

@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
-import { getDatabase, getDatabasePath } from '$lib/server/db';
 import { handleError, ValidationError } from '$lib/server/errors';
+import { getDatabasePath, getDatabase } from '$lib/server/db';
 import { getLogger } from '$lib/server/logging';
+import { getConfigDir } from '$lib/server/config';
 import { requireAdmin } from '$lib/server/auth';
 import { copyFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
@@ -19,8 +20,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 			throw new ValidationError('Database file not found');
 		}
 
-		const configDir = process.env.CONFIG_DIR || (process.env.NODE_ENV === 'development' ? join(process.cwd(), 'test-config') : '/config');
-		const backupsDir = join(configDir, 'backups');
+		const backupsDir = join(getConfigDir(), 'backups');
 		
 		// Create backups directory if it doesn't exist
 		if (!existsSync(backupsDir)) {

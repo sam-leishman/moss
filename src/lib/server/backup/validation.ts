@@ -1,6 +1,7 @@
 import { ValidationError } from '$lib/server/errors';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { getConfigDir } from '$lib/server/config';
 
 export interface BackupValidationResult {
 	backupPath: string;
@@ -31,7 +32,7 @@ export function validateBackupFilename(backupFilename: string): BackupValidation
 	}
 
 	// Construct paths only after validation
-	const configDir = process.env.CONFIG_DIR || (process.env.NODE_ENV === 'development' ? join(process.cwd(), 'test-config') : '/config');
+	const configDir = getConfigDir();
 	const backupsDir = join(configDir, 'backups');
 	const backupPath = join(backupsDir, backupFilename);
 

@@ -1,5 +1,6 @@
 import { realpathSync, existsSync, statSync } from 'fs';
 import { resolve, normalize, isAbsolute, sep } from 'path';
+import { getMediaPath } from '$lib/server/config';
 
 export class PathValidationError extends Error {
 	constructor(message: string) {
@@ -127,18 +128,13 @@ let mediaPathValidator: PathValidator | null = null;
 
 export function getMediaPathValidator(): PathValidator {
 	if (!mediaPathValidator) {
-		const mediaPath = process.env.MEDIA_PATH || '/media';
+		const mediaPath = getMediaPath();
 		
 		try {
 			mediaPathValidator = new PathValidator(mediaPath);
 		} catch (error) {
-			if (process.env.NODE_ENV === 'production') {
-				throw new Error(`Media path ${mediaPath} not accessible in production: ${error instanceof Error ? error.message : 'Unknown error'}`);
-			}
-			
-			console.warn(`Media path ${mediaPath} not accessible in development, using fallback test-media directory`);
-			const fallbackPath = resolve(process.cwd(), 'test-media');
-			mediaPathValidator = new PathValidator(fallbackPath);
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			throw new Error(`Media path ${mediaPath} not accessible: ${errorMessage}. Ensure the directory exists and has proper permissions.`);
 		}
 	}
 	
