@@ -142,6 +142,9 @@ export type PersonRole = typeof PERSON_ROLES[number];
 export const ARTIST_STYLES = ['2d_animator', '3d_animator', 'illustrator', 'photographer', 'other'] as const;
 export type ArtistStyle = typeof ARTIST_STYLES[number];
 
+export const GENDERS = ['male', 'female'] as const;
+export type Gender = typeof GENDERS[number];
+
 export function sanitizeMediaType(input: unknown): MediaType {
 	return sanitizeEnum(input, MEDIA_TYPES, 'media_type');
 }
@@ -152,4 +155,31 @@ export function sanitizePersonRole(input: unknown): PersonRole {
 
 export function sanitizeArtistStyle(input: unknown): ArtistStyle {
 	return sanitizeEnum(input, ARTIST_STYLES, 'style');
+}
+
+export function sanitizeGender(input: unknown): Gender {
+	return sanitizeEnum(input, GENDERS, 'gender');
+}
+
+export function sanitizeBirthday(input: unknown): string {
+	if (typeof input !== 'string') {
+		throw new SanitizationError('Birthday must be a string');
+	}
+
+	const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+	if (!isoDatePattern.test(input)) {
+		throw new SanitizationError('Birthday must be in ISO format (YYYY-MM-DD)');
+	}
+
+	const date = new Date(input);
+	if (isNaN(date.getTime())) {
+		throw new SanitizationError('Birthday must be a valid date');
+	}
+
+	const now = new Date();
+	if (date > now) {
+		throw new SanitizationError('Birthday cannot be in the future');
+	}
+
+	return input;
 }

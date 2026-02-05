@@ -104,13 +104,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				db.prepare('INSERT INTO artist_profile (person_id) VALUES (?)').run(personId);
 			}
 		} else if (sanitizedRole === 'performer' && profile) {
-			const age = profile.age || null;
-			if (age !== null) {
-				const { sanitizeInteger } = await import('$lib/server/security/sanitizer');
-				const sanitizedAge = sanitizeInteger(age, { min: 0 });
-				db.prepare('INSERT INTO performer_profile (person_id, age) VALUES (?, ?)').run(personId, sanitizedAge);
-			} else {
-				db.prepare('INSERT INTO performer_profile (person_id) VALUES (?)').run(personId);
+			const birthday = profile.birthday || null;
+			const gender = profile.gender || null;
+			
+			let sanitizedBirthday = null;
+			let sanitizedGender = null;
+			
+			if (birthday) {
+				const { sanitizeBirthday } = await import('$lib/server/security/sanitizer');
+				sanitizedBirthday = sanitizeBirthday(birthday);
+			}
+			
+			if (gender) {
+				const { sanitizeGender } = await import('$lib/server/security/sanitizer');
+				sanitizedGender = sanitizeGender(gender);
+			}
+			
+			// Create profile first, then update only the provided fields
+			db.prepare('INSERT INTO performer_profile (person_id) VALUES (?)').run(personId);
+			if (birthday) {
+				db.prepare('UPDATE performer_profile SET birthday = ?, updated_at = datetime(\'now\') WHERE person_id = ?').run(sanitizedBirthday, personId);
+			}
+			if (gender) {
+				db.prepare('UPDATE performer_profile SET gender = ?, updated_at = datetime(\'now\') WHERE person_id = ?').run(sanitizedGender, personId);
 			}
 		}
 

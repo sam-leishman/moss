@@ -153,16 +153,41 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 					}
 				}
 			} else if (person.role === 'performer') {
-				const age = profile.age;
-				if (age !== undefined && age !== null) {
-					const { sanitizeInteger } = await import('$lib/server/security/sanitizer');
-					const sanitizedAge = sanitizeInteger(age, { min: 0 });
-					
+				const birthday = profile.birthday;
+				const gender = profile.gender;
+				
+				let sanitizedBirthday = null;
+				let sanitizedGender = null;
+				
+				if (birthday !== undefined && birthday !== null) {
+					const { sanitizeBirthday } = await import('$lib/server/security/sanitizer');
+					sanitizedBirthday = sanitizeBirthday(birthday);
+				}
+				
+				if (gender !== undefined && gender !== null) {
+					const { sanitizeGender } = await import('$lib/server/security/sanitizer');
+					sanitizedGender = sanitizeGender(gender);
+				}
+				
+				if (birthday !== undefined || gender !== undefined) {
 					const existingProfile = db.prepare('SELECT person_id FROM performer_profile WHERE person_id = ?').get(personId);
 					if (existingProfile) {
-						db.prepare('UPDATE performer_profile SET age = ?, updated_at = datetime(\'now\') WHERE person_id = ?').run(sanitizedAge, personId);
+						if (birthday !== undefined && gender !== undefined) {
+							db.prepare('UPDATE performer_profile SET birthday = ?, gender = ?, updated_at = datetime(\'now\') WHERE person_id = ?').run(sanitizedBirthday, sanitizedGender, personId);
+						} else if (birthday !== undefined) {
+							db.prepare('UPDATE performer_profile SET birthday = ?, updated_at = datetime(\'now\') WHERE person_id = ?').run(sanitizedBirthday, personId);
+						} else if (gender !== undefined) {
+							db.prepare('UPDATE performer_profile SET gender = ?, updated_at = datetime(\'now\') WHERE person_id = ?').run(sanitizedGender, personId);
+						}
 					} else {
-						db.prepare('INSERT INTO performer_profile (person_id, age) VALUES (?, ?)').run(personId, sanitizedAge);
+						// Create profile first with empty values, then update only the provided fields
+						db.prepare('INSERT INTO performer_profile (person_id) VALUES (?)').run(personId);
+						if (birthday !== undefined) {
+							db.prepare('UPDATE performer_profile SET birthday = ?, updated_at = datetime(\'now\') WHERE person_id = ?').run(sanitizedBirthday, personId);
+						}
+						if (gender !== undefined) {
+							db.prepare('UPDATE performer_profile SET gender = ?, updated_at = datetime(\'now\') WHERE person_id = ?').run(sanitizedGender, personId);
+						}
 					}
 				}
 			}

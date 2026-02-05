@@ -4,7 +4,7 @@
 	import { fetchLibraries } from '$lib/utils/api';
 
 	interface Props {
-		libraryId?: number;
+		libraryId: number;
 	}
 
 	let { libraryId }: Props = $props();
@@ -33,7 +33,8 @@
 	let newPersonName = $state('');
 	let newPersonRole = $state<'artist' | 'performer'>('artist');
 	let newPersonStyle = $state<string>('');
-	let newPersonAge = $state<number | null>(null);
+	let newPersonBirthday = $state<string>('');
+	let newPersonGender = $state<string>('');
 	let isGlobal = $state(false);
 	let showCrossLibraryWarning = $state(false);
 	let crossLibraryUsage = $state<Array<{ library_id: number; library_name: string; count: number }>>([]);
@@ -90,7 +91,7 @@
 		try {
 			const profile = newPersonRole === 'artist' 
 				? { style: newPersonStyle || null }
-				: { age: newPersonAge };
+				: { birthday: newPersonBirthday || null, gender: newPersonGender || null };
 
 			const response = await fetch('/api/people', {
 				method: 'POST',
@@ -111,7 +112,8 @@
 
 			newPersonName = '';
 			newPersonStyle = '';
-			newPersonAge = null;
+			newPersonBirthday = '';
+			newPersonGender = '';
 			isGlobal = false;
 			showCreateModal = false;
 			await loadPeople();
@@ -135,7 +137,7 @@
 		try {
 			const profile = editingPerson.role === 'artist'
 				? { style: newPersonStyle || null }
-				: { age: newPersonAge };
+				: { birthday: newPersonBirthday || null, gender: newPersonGender || null };
 
 			const response = await fetch(`/api/people/${editingPerson.id}`, {
 				method: 'PATCH',
@@ -224,7 +226,8 @@
 			editingPerson = null;
 			newPersonName = '';
 			newPersonStyle = '';
-			newPersonAge = null;
+			newPersonBirthday = '';
+			newPersonGender = '';
 			isGlobal = false;
 			imageUploadError = null;
 			pendingImageFile = null;
@@ -294,7 +297,8 @@
 					if (person.role === 'artist') {
 						newPersonStyle = data.profile.style || '';
 					} else if (person.role === 'performer') {
-						newPersonAge = data.profile.age;
+						newPersonBirthday = data.profile.birthday || '';
+						newPersonGender = data.profile.gender || '';
 					}
 				}
 			}
@@ -314,7 +318,8 @@
 		editingPerson = null;
 		newPersonName = '';
 		newPersonStyle = '';
-		newPersonAge = null;
+		newPersonBirthday = '';
+		newPersonGender = '';
 		isGlobal = false;
 		imageUploadError = null;
 		pendingImageFile = null;
@@ -371,7 +376,8 @@
 		newPersonName = '';
 		newPersonRole = 'artist';
 		newPersonStyle = '';
-		newPersonAge = null;
+		newPersonBirthday = '';
+		newPersonGender = '';
 		isGlobal = false;
 		showCreateModal = true;
 	};
@@ -421,7 +427,7 @@
 						{#each globalPeople() as person (person.id)}
 							<div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 hover:shadow-md transition-shadow">
 								<div class="flex items-start justify-between">
-									<a href={libraryId ? `/libraries/${libraryId}/people/${person.id}` : `/people/${person.id}`} class="flex items-center gap-3 flex-1 min-w-0 group">
+									<a href={`/libraries/${libraryId}/people/${person.id}`} class="flex items-center gap-3 flex-1 min-w-0 group">
 										<div class="w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
 											{#if person.image_path}
 												{#key `${person.id}-${person.updated_at}`}
@@ -482,7 +488,7 @@
 							{#each libPeople as person (person.id)}
 								<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
 									<div class="flex items-start justify-between">
-										<a href={libraryId ? `/libraries/${libraryId}/people/${person.id}` : `/people/${person.id}`} class="flex items-center gap-3 flex-1 min-w-0 group">
+										<a href={`/libraries/${libraryId}/people/${person.id}`} class="flex items-center gap-3 flex-1 min-w-0 group">
 										<div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
 											{#if person.image_path}
 												{#key `${person.id}-${person.updated_at}`}
@@ -583,17 +589,29 @@
 					</div>
 				{:else if newPersonRole === 'performer'}
 					<div>
-						<label for="age" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-							Age (Optional)
+						<label for="birthday" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							Birthday (Optional)
 						</label>
 						<input
-							type="number"
-							id="age"
-							bind:value={newPersonAge}
-							min="0"
+							type="date"
+							id="birthday"
+							bind:value={newPersonBirthday}
 							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-							placeholder="Enter age"
 						/>
+					</div>
+					<div>
+						<label for="gender" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							Gender (Optional)
+						</label>
+						<select
+							id="gender"
+							bind:value={newPersonGender}
+							class="w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+						>
+							<option value="">Not specified</option>
+							<option value="male">Male</option>
+							<option value="female">Female</option>
+						</select>
 					</div>
 				{/if}
 				
@@ -755,17 +773,29 @@
 					</div>
 				{:else if editingPerson.role === 'performer'}
 					<div>
-						<label for="edit-age" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-							Age (Optional)
+						<label for="edit-birthday" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							Birthday (Optional)
 						</label>
 						<input
-							type="number"
-							id="edit-age"
-							bind:value={newPersonAge}
-							min="0"
+							type="date"
+							id="edit-birthday"
+							bind:value={newPersonBirthday}
 							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-							placeholder="Enter age"
 						/>
+					</div>
+					<div>
+						<label for="edit-gender" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							Gender (Optional)
+						</label>
+						<select
+							id="edit-gender"
+							bind:value={newPersonGender}
+							class="w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+						>
+							<option value="">Not specified</option>
+							<option value="male">Male</option>
+							<option value="female">Female</option>
+						</select>
 					</div>
 				{/if}
 				

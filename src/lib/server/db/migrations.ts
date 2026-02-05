@@ -319,6 +319,75 @@ export const migrations: Migration[] = [
 			db.exec('DROP TABLE IF EXISTS user_media_like');
 			db.exec('DELETE FROM schema_version WHERE version = 7');
 		}
+	},
+	{
+		version: 8,
+		up: (db: Database.Database) => {
+			db.pragma('foreign_keys = OFF');
+			
+			try {
+				db.exec(`
+					CREATE TABLE performer_profile_new (
+						person_id INTEGER PRIMARY KEY,
+						birthday TEXT,
+						gender TEXT CHECK(gender IN ('male', 'female')),
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+						FOREIGN KEY (person_id) REFERENCES person(id) ON DELETE CASCADE
+					)
+				`);
+				
+				// Convert existing age data to approximate birth years
+				// Calculate birthday as January 1st of (current_year - age)
+				db.exec(`
+					INSERT INTO performer_profile_new (person_id, birthday, created_at, updated_at)
+					SELECT 
+						person_id,
+						CASE 
+							WHEN age IS NOT NULL THEN 
+								printf('%04d-01-01', CAST(strftime('%Y', 'now') AS INTEGER) - age)
+							ELSE NULL
+						END as birthday,
+						created_at,
+						updated_at
+					FROM performer_profile
+				`);
+				
+				db.exec('DROP TABLE performer_profile');
+				db.exec('ALTER TABLE performer_profile_new RENAME TO performer_profile');
+				
+				const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
+				stmt.run(8);
+			} finally {
+				db.pragma('foreign_keys = ON');
+			}
+		},
+		down: (db: Database.Database) => {
+			db.pragma('foreign_keys = OFF');
+			
+			try {
+				db.exec(`
+					CREATE TABLE performer_profile_old (
+						person_id INTEGER PRIMARY KEY,
+						age INTEGER CHECK(age >= 0),
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+						FOREIGN KEY (person_id) REFERENCES person(id) ON DELETE CASCADE
+					)
+				`);
+				
+				db.exec(`
+					INSERT INTO performer_profile_old (person_id, created_at, updated_at)
+					SELECT person_id, created_at, updated_at FROM performer_profile
+				`);
+				
+				db.exec('DROP TABLE performer_profile');
+				db.exec('ALTER TABLE performer_profile_old RENAME TO performer_profile');
+				db.exec('DELETE FROM schema_version WHERE version = 8');
+			} finally {
+				db.pragma('foreign_keys = ON');
+			}
+		}
 	}
 ];
 

@@ -194,8 +194,8 @@ export const POST: RequestHandler = async ({ request }) => {
 						stats.performerProfiles.skipped++;
 					} else {
 						db.prepare(
-							'INSERT INTO performer_profile (person_id, age, created_at, updated_at) VALUES (?, ?, ?, ?)'
-						).run(newPersonId, profile.age, profile.created_at, profile.updated_at);
+							'INSERT INTO performer_profile (person_id, birthday, gender, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+						).run(newPersonId, profile.birthday || null, profile.gender || null, profile.created_at, profile.updated_at);
 						
 						stats.performerProfiles.added++;
 					}

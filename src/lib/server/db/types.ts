@@ -55,7 +55,8 @@ export interface ArtistProfile {
 
 export interface PerformerProfile {
 	person_id: number;
-	age: number | null;
+	birthday: string | null;
+	gender: 'male' | 'female' | null;
 	created_at: string;
 	updated_at: string;
 }

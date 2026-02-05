@@ -21,16 +21,20 @@ export {
 	sanitizeMediaType,
 	sanitizePersonRole,
 	sanitizeArtistStyle,
+	sanitizeGender,
+	sanitizeBirthday,
 	MEDIA_TYPES,
 	PERSON_ROLES,
-	ARTIST_STYLES
+	ARTIST_STYLES,
+	GENDERS
 } from './sanitizer';
 
 export type { 
 	SanitizeStringOptions,
 	MediaType,
 	PersonRole,
-	ArtistStyle
+	ArtistStyle,
+	Gender
 } from './sanitizer';
 
 export {

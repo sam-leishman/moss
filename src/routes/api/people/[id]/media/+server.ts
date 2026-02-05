@@ -3,13 +3,14 @@ import { getDatabase } from '$lib/server/db';
 import { sanitizeInteger } from '$lib/server/security/sanitizer';
 import { handleError } from '$lib/server/errors';
 import { getLogger } from '$lib/server/logging';
+import { requireAuth } from '$lib/server/auth';
 import type { Media } from '$lib/server/db';
 import type { RequestHandler } from './$types';
 import type { MediaType } from '$lib/server/security';
 
 const logger = getLogger('api:person-media');
 
-export const GET: RequestHandler = async ({ params, url }) => {
+export const GET: RequestHandler = async ({ params, url, locals }) => {
 	try {
 		const personId = sanitizeInteger(params.id);
 		const db = getDatabase();
@@ -29,6 +30,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		const libraryIdParam = url.searchParams.get('library_id');
 		const tagIdsParam = url.searchParams.get('tag_ids');
 		const additionalPersonIdsParam = url.searchParams.get('person_ids');
+		const likedParam = url.searchParams.get('liked');
 
 		// Build WHERE conditions
 		const conditions: string[] = ['mc.person_id = ?'];
@@ -79,27 +81,66 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			}
 		}
 
+		// Liked filtering
+		const likedOnly = likedParam === 'true';
+		let userId: number | undefined;
+		if (likedOnly) {
+			const user = requireAuth(locals);
+			userId = user.id;
+		}
+
 		const whereClause = conditions.join(' AND ');
 
-		// Get total count
-		const countQuery = `
-			SELECT COUNT(DISTINCT m.id) as total
-			FROM media m
-			INNER JOIN media_credit mc ON mc.media_id = m.id
-			WHERE ${whereClause}
-		`;
-		const { total } = db.prepare(countQuery).get(...queryParams) as { total: number };
+		let countQuery: string;
+		let mediaQuery: string;
+		let total: number;
+		let media: Media[];
 
-		// Get paginated media
-		const mediaQuery = `
-			SELECT DISTINCT m.*
-			FROM media m
-			INNER JOIN media_credit mc ON mc.media_id = m.id
-			WHERE ${whereClause}
-			ORDER BY m.created_at DESC
-			LIMIT ? OFFSET ?
-		`;
-		const media = db.prepare(mediaQuery).all(...queryParams, pageSize, offset) as Media[];
+		if (likedOnly && userId) {
+			// Add liked filtering to queries
+			countQuery = `
+				SELECT COUNT(DISTINCT m.id) as total
+				FROM media m
+				INNER JOIN media_credit mc ON mc.media_id = m.id
+				WHERE ${whereClause} AND m.id IN (
+					SELECT media_id FROM user_media_like WHERE user_id = ?
+				)
+			`;
+			const countResult = db.prepare(countQuery).get(...queryParams, userId) as { total: number };
+			total = countResult.total;
+
+			mediaQuery = `
+				SELECT DISTINCT m.*
+				FROM media m
+				INNER JOIN media_credit mc ON mc.media_id = m.id
+				WHERE ${whereClause} AND m.id IN (
+					SELECT media_id FROM user_media_like WHERE user_id = ?
+				)
+				ORDER BY m.created_at DESC
+				LIMIT ? OFFSET ?
+			`;
+			media = db.prepare(mediaQuery).all(...queryParams, userId, pageSize, offset) as Media[];
+		} else {
+			// Normal queries without liked filtering
+			countQuery = `
+				SELECT COUNT(DISTINCT m.id) as total
+				FROM media m
+				INNER JOIN media_credit mc ON mc.media_id = m.id
+				WHERE ${whereClause}
+			`;
+			const countResult = db.prepare(countQuery).get(...queryParams) as { total: number };
+			total = countResult.total;
+
+			mediaQuery = `
+				SELECT DISTINCT m.*
+				FROM media m
+				INNER JOIN media_credit mc ON mc.media_id = m.id
+				WHERE ${whereClause}
+				ORDER BY m.created_at DESC
+				LIMIT ? OFFSET ?
+			`;
+			media = db.prepare(mediaQuery).all(...queryParams, pageSize, offset) as Media[];
+		}
 
 		const totalPages = Math.ceil(total / pageSize);
 

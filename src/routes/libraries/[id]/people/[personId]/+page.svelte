@@ -33,6 +33,7 @@
 	let selectedTags = $state<number[]>([]);
 	let selectedPeople = $state<number[]>([]);
 	let selectedLibraryId = $state<number | null>(null);
+	let likedOnly = $state(false);
 	let bulkSelectMode = $state(false);
 	let selectedMediaIds = $state<Set<number>>(new Set());
 	let showBulkEditPanel = $state(false);
@@ -125,6 +126,10 @@
 				params.append('library_id', selectedLibraryId.toString());
 			}
 
+			if (likedOnly) {
+				params.append('liked', 'true');
+			}
+
 			const response = await fetch(`/api/people/${personId}/media?${params}`);
 			
 			if (!response.ok) {
@@ -155,6 +160,7 @@
 		}
 	});
 
+	// Track filter state changes and reload media
 	$effect(() => {
 		if (personId) {
 			loadMedia();
@@ -185,6 +191,12 @@
 
 	const handlePeopleChange = (people: number[]) => {
 		selectedPeople = people;
+		currentPage = 1;
+		resetSelectionState();
+	};
+
+	const handleLikedOnlyChange = (liked: boolean) => {
+		likedOnly = liked;
 		currentPage = 1;
 		resetSelectionState();
 	};
@@ -353,9 +365,30 @@
 
 	const formatStyleLabel = (style: string | null): string => {
 		if (!style) return 'Not specified';
-		return style.split('_').map(word => 
-			word.charAt(0).toUpperCase() + word.slice(1)
-		).join(' ');
+		return style.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+	};
+
+	const calculateAge = (birthday: string): number | null => {
+		if (!birthday) return null;
+		
+		const birthDate = new Date(birthday);
+		const today = new Date();
+		
+		// Check if birthday is valid
+		if (isNaN(birthDate.getTime())) return null;
+		
+		// Check if birthday is in the future
+		if (birthDate > today) return null;
+		
+		let age = today.getFullYear() - birthDate.getFullYear();
+		const monthDiff = today.getMonth() - birthDate.getMonth();
+		
+		// Adjust age if birthday hasn't occurred yet this year
+		if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+			age--;
+		}
+		
+		return age;
 	};
 
 	const handleImageUpload = async (event: Event) => {
@@ -440,88 +473,124 @@
 	</div>
 {:else if person}
 	<div class="flex flex-col h-full">
-		<div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 rounded-lg p-6">
-			<div class="flex items-start gap-6">
-				<div class="relative group">
-					<div class="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
-						{#if person.image_path}
-							<img 
-								src="/api/images/people/{person.image_path}?v={new Date(person.updated_at).getTime()}" 
-								alt={person.name} 
-								class="w-full h-full object-cover"
-							/>
-						{:else}
-							<User class="w-10 h-10 text-gray-600 dark:text-gray-400" />
-						{/if}
-					</div>
-					<div class="absolute inset-0 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-						<input
-							type="file"
-							accept="image/jpeg,image/jpg,image/png,image/webp"
-							onchange={handleImageUpload}
-							class="hidden"
-							bind:this={fileInputRef}
-							disabled={uploadingImage}
-						/>
-						<button
-							type="button"
-							onclick={() => fileInputRef?.click()}
-							class="p-1.5 bg-white dark:bg-gray-800 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-							title="Upload image"
-							disabled={uploadingImage}
-						>
-							<Upload class="w-4 h-4 text-gray-700 dark:text-gray-300" />
-						</button>
-						{#if person.image_path}
-							<button
-								type="button"
-								onclick={handleDeleteImage}
-								class="p-1.5 bg-white dark:bg-gray-800 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
-								title="Delete image"
-								disabled={uploadingImage}
-							>
-								<X class="w-4 h-4 text-red-600 dark:text-red-400" />
-							</button>
-						{/if}
-					</div>
-				</div>
-				<div class="flex-1">
-					<h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{person.name}</h1>
-					<p class="text-lg text-gray-600 dark:text-gray-400 capitalize mb-4">{person.role}</p>
-					
-					{#if imageUploadError}
-						<div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
-							{imageUploadError}
-						</div>
-					{/if}
-					{#if uploadingImage}
-						<div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-300">
-							Uploading image...
-						</div>
-					{/if}
-					
-					{#if person.role === 'artist' && profile}
-						<div class="space-y-2">
-							<div>
-								<span class="text-sm font-medium text-gray-500 dark:text-gray-400">Style:</span>
-								<span class="ml-2 text-gray-900 dark:text-gray-100">{formatStyleLabel((profile as ArtistProfile).style)}</span>
+		<!-- Person Info Header -->
+		<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
+			
+			<!-- Content -->
+			<div class="relative p-8">
+				<div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+					<!-- Profile Image -->
+					<div class="relative flex-shrink-0 self-center">
+						<div class="relative group">
+								<div class="w-32 h-32 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
+								{#if person.image_path}
+									<img 
+										src="/api/images/people/{person.image_path}?v={new Date(person.updated_at).getTime()}" 
+										alt={person.name} 
+										class="w-full h-full object-cover"
+									/>
+								{:else}
+									<User class="w-16 h-16 text-gray-400 dark:text-gray-500" />
+								{/if}
+							</div>
+							<!-- Image Controls Overlay -->
+								<div class="absolute inset-0 bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+								<input
+									type="file"
+									accept="image/jpeg,image/jpg,image/png,image/webp"
+									onchange={handleImageUpload}
+									class="hidden"
+									bind:this={fileInputRef}
+									disabled={uploadingImage}
+								/>
+								<button
+									type="button"
+									onclick={() => fileInputRef?.click()}
+									class="p-1.5 bg-white dark:bg-gray-800 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+									title="Upload image"
+									disabled={uploadingImage}
+								>
+									<Upload class="w-5 h-5 text-gray-700 dark:text-gray-300" />
+								</button>
+								{#if person.image_path}
+									<button
+										type="button"
+										onclick={handleDeleteImage}
+										class="p-1.5 bg-white dark:bg-gray-800 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+										title="Delete image"
+										disabled={uploadingImage}
+									>
+										<X class="w-5 h-5 text-red-600 dark:text-red-400" />
+									</button>
+								{/if}
 							</div>
 						</div>
-					{:else if person.role === 'performer' && profile}
-						<div class="space-y-2">
-							{#if (profile as PerformerProfile).age !== null}
-								<div>
-									<span class="text-sm font-medium text-gray-500 dark:text-gray-400">Age:</span>
-									<span class="ml-2 text-gray-900 dark:text-gray-100">{(profile as PerformerProfile).age}</span>
-								</div>
-							{/if}
+					</div>
+					
+					<!-- Person Details -->
+					<div class="flex-1 text-center sm:text-left">
+						<div class="mb-4">
+						<div class="flex flex-col sm:flex-row items-center sm:items-end gap-3 sm:gap-4">
+							<h1 class="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">{person.name}</h1>
+							<div class="inline-flex items-center px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+								<span class="text-sm font-medium text-blue-800 dark:text-blue-200 capitalize">{person.role}</span>
+							</div>
 						</div>
-					{/if}
-
-					<div class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-						<p>{totalMediaCount} media {totalMediaCount === 1 ? 'item' : 'items'}</p>
+					</div>
+						
+						<!-- Profile Information -->
+						{#if person.role === 'artist' && profile}
+							<div class="flex flex-wrap gap-3 justify-center sm:justify-start">
+								<div class="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+									<span class="text-sm font-medium text-gray-600 dark:text-gray-400">Style:</span>
+									<span class="ml-2 text-sm text-gray-900 dark:text-gray-100">{formatStyleLabel((profile as ArtistProfile).style)}</span>
+								</div>
+							</div>
+						{:else if person.role === 'performer' && profile}
+							<div class="flex flex-wrap gap-3 justify-center sm:justify-start">
+								{#if (profile as PerformerProfile).birthday}
+									{@const age = calculateAge((profile as PerformerProfile).birthday!)}
+									{#if age !== null}
+										<div class="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+											<span class="text-sm font-medium text-gray-600 dark:text-gray-400">Age:</span>
+											<span class="ml-2 text-sm text-gray-900 dark:text-gray-100">{age}</span>
+										</div>
+									{/if}
+								{/if}
+								{#if (profile as PerformerProfile).gender}
+									<div class="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+										<span class="text-sm font-medium text-gray-600 dark:text-gray-400">Gender:</span>
+										<span class="ml-2 text-sm text-gray-900 dark:text-gray-100 capitalize">{(profile as PerformerProfile).gender}</span>
+									</div>
+								{/if}
+							</div>
+						{/if}
+						
+						<!-- Media Count -->
+						<div class="mt-4">
+							<div class="inline-flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600">
+								<span class="text-xs font-medium text-gray-600 dark:text-gray-400">{totalMediaCount} media {totalMediaCount === 1 ? 'item' : 'items'}</span>
+							</div>
+						</div>
 					</div>
 				</div>
+				
+				<!-- Upload Status Messages -->
+				{#if imageUploadError || uploadingImage}
+					<div class="mt-6 space-y-2">
+						{#if imageUploadError}
+							<div class="p-3 bg-red-50/90 dark:bg-red-900/20 border border-red-200/50 dark:border-red-800/50 rounded-xl text-sm text-red-700 dark:text-red-300 backdrop-blur-sm">
+								{imageUploadError}
+							</div>
+						{/if}
+						{#if uploadingImage}
+							<div class="p-3 bg-blue-50/90 dark:bg-blue-900/20 border border-blue-200/50 dark:border-blue-800/50 rounded-xl text-sm text-blue-700 dark:text-blue-300 backdrop-blur-sm flex items-center gap-2">
+								<div class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+								Uploading image...
+							</div>
+						{/if}
+					</div>
+				{/if}
 			</div>
 		</div>
 
@@ -548,13 +617,15 @@
 				viewMode={viewMode}
 				selectedTags={selectedTags}
 				selectedPeople={selectedPeople}
-				libraryId={selectedLibraryId || 0}
+				likedOnly={likedOnly}
+				libraryId={libraryId}
 				personId={parseInt(personId)}
 				onSearchChange={handleSearchChange}
 				onMediaTypeChange={handleMediaTypeChange}
 				onViewModeChange={handleViewModeChange}
 				onTagsChange={handleTagsChange}
 				onPeopleChange={handlePeopleChange}
+				onLikedOnlyChange={handleLikedOnlyChange}
 			/>
 		</div>
 

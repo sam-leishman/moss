@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export const createTablesSQL = `
 -- Schema version tracking
@@ -82,7 +82,8 @@ CREATE TABLE IF NOT EXISTS artist_profile (
 -- Performer profiles
 CREATE TABLE IF NOT EXISTS performer_profile (
 	person_id INTEGER PRIMARY KEY,
-	age INTEGER CHECK(age >= 0),
+	birthday TEXT,
+	gender TEXT CHECK(gender IN ('male', 'female')),
 	created_at TEXT NOT NULL DEFAULT (datetime('now')),
 	updated_at TEXT NOT NULL DEFAULT (datetime('now')),
 	FOREIGN KEY (person_id) REFERENCES person(id) ON DELETE CASCADE
