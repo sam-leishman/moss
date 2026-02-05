@@ -30,7 +30,7 @@ export function validateStartupEnvironment(): void {
 		{
 			path: getMediaPath(),
 			name: 'MEDIA_PATH',
-			required: true,
+			required: false,
 			writable: false
 		}
 	];
@@ -64,7 +64,12 @@ export function validateStartupEnvironment(): void {
 		try {
 			accessSync(dir.path, constants.R_OK);
 		} catch {
-			errors.push(`${dir.name} directory is not readable: ${dir.path}`);
+			const msg = `${dir.name} directory is not readable: ${dir.path}`;
+			if (dir.required) {
+				errors.push(msg);
+			} else {
+				warnings.push(msg);
+			}
 			continue;
 		}
 
@@ -73,7 +78,12 @@ export function validateStartupEnvironment(): void {
 			try {
 				accessSync(dir.path, constants.W_OK);
 			} catch {
-				errors.push(`${dir.name} directory is not writable: ${dir.path}`);
+				const msg = `${dir.name} directory is not writable: ${dir.path}`;
+				if (dir.required) {
+					errors.push(msg);
+				} else {
+					warnings.push(msg);
+				}
 				continue;
 			}
 		}
