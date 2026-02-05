@@ -106,6 +106,34 @@ export function handleError(
 		return json(response, { status: 400 });
 	}
 
+	// Handle SvelteKit errors (thrown by error() function)
+	if (error && typeof error === 'object' && 'status' in error && 'body' in error) {
+		const status = (error as any).status;
+		const body = (error as any).body;
+		const message = body && typeof body === 'object' && 'message' in body ? body.message : String(body);
+		
+		logger.warn(
+			`SvelteKit error: ${message}`,
+			{
+				status,
+				requestId,
+				path: context?.path,
+				method: context?.method
+			}
+		);
+
+		const response: ErrorResponse = {
+			error: status === 401 ? 'AuthenticationError' : status === 403 ? 'AuthorizationError' : 'RequestError',
+			message,
+			code: status === 401 ? ErrorCode.UNAUTHORIZED : status === 403 ? ErrorCode.FORBIDDEN : ErrorCode.VALIDATION_ERROR,
+			statusCode: status,
+			requestId,
+			timestamp
+		};
+
+		return json(response, { status });
+	}
+
 	if (error instanceof Error) {
 		logger.error(
 			`Unexpected error: ${error.message}`,
