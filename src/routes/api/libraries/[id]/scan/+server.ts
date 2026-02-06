@@ -54,6 +54,7 @@ export const POST = async ({ params }: { params: { id: string } }) => {
 							updated: stats.updated,
 							removed: stats.removed,
 							thumbnailsGenerated: stats.thumbnailsGenerated,
+							filesProbed: stats.filesProbed,
 							errors: stats.errors.length,
 							duration: stats.duration
 						},

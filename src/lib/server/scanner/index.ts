@@ -29,3 +29,7 @@ export type {
 	ScanProgress,
 	ScanStats
 } from './library-scanner';
+
+export { probeMediaFile } from './probe';
+
+export type { ProbeResult } from './probe';

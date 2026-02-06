@@ -17,6 +17,13 @@ export interface Media {
 	size: number;
 	mtime: string;
 	birthtime: string;
+	duration: number | null;
+	width: number | null;
+	height: number | null;
+	video_codec: string | null;
+	audio_codec: string | null;
+	container_format: string | null;
+	bitrate: number | null;
 	created_at: string;
 	updated_at: string;
 }

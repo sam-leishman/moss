@@ -74,6 +74,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				updated: 0,
 				removed: 0,
 				thumbnailsGenerated: 0,
+				filesProbed: 0,
 				errors: [{ path: '', error: 'Scan failed during library creation' }],
 				duration: 0
 			};

@@ -34,3 +34,38 @@ export function formatDate(dateString: string | null): string {
 export function formatDateTime(dateString: string): string {
 	return new Date(dateString).toLocaleString();
 }
+
+/**
+ * Formats a duration in seconds into a human-readable string
+ * @param seconds - Duration in seconds
+ * @returns Formatted string (e.g., "1:23:45" or "3:45")
+ */
+export function formatDuration(seconds: number): string {
+	if (!isFinite(seconds) || seconds < 0) return 'Unknown';
+
+	const h = Math.floor(seconds / 3600);
+	const m = Math.floor((seconds % 3600) / 60);
+	const s = Math.floor(seconds % 60);
+
+	if (h > 0) {
+		return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+	}
+	return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Formats a bitrate in bits per second into a human-readable string
+ * @param bps - Bitrate in bits per second
+ * @returns Formatted string (e.g., "4.5 Mbps")
+ */
+export function formatBitrate(bps: number): string {
+	if (!isFinite(bps) || bps <= 0) return 'Unknown';
+
+	if (bps >= 1_000_000) {
+		return `${(bps / 1_000_000).toFixed(1)} Mbps`;
+	}
+	if (bps >= 1_000) {
+		return `${(bps / 1_000).toFixed(0)} Kbps`;
+	}
+	return `${bps} bps`;
+}

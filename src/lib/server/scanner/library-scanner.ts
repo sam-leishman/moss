@@ -2,6 +2,8 @@ import { getDatabase } from '$lib/server/db';
 import { FileScanner } from './file-scanner';
 import { getLogger } from '$lib/server/logging';
 import { getThumbnailGenerator } from '$lib/server/thumbnails';
+import { probeMediaFile } from './probe';
+import { invalidateTranscodeCache, invalidateHlsCache } from '$lib/server/streaming';
 import type { Library, Media } from '$lib/server/db';
 import type { ScannedFile } from './file-scanner';
 import { existsSync } from 'fs';
@@ -16,6 +18,7 @@ export interface ScanProgress {
 	updatedFiles: number;
 	errors: number;
 	thumbnailsGenerated?: number;
+	filesProbed?: number;
 	status: 'scanning' | 'processing' | 'completed' | 'failed';
 }
 
@@ -25,6 +28,7 @@ export interface ScanStats {
 	updated: number;
 	removed: number;
 	thumbnailsGenerated: number;
+	filesProbed: number;
 	errors: Array<{ path: string; error: string }>;
 	duration: number;
 }
@@ -46,6 +50,7 @@ export class LibraryScanner {
 			updated: 0,
 			removed: 0,
 			thumbnailsGenerated: 0,
+			filesProbed: 0,
 			errors: [],
 			duration: 0
 		};
@@ -177,6 +182,9 @@ export class LibraryScanner {
 				}
 			}
 
+			// Probe video files missing metadata
+			await this.probeUnprobedMedia(stats, onProgress, scanResult.totalFiles);
+
 			// Ensure all media has valid (non-placeholder) thumbnails
 			await this.ensureThumbnails(stats, onProgress, scanResult.totalFiles);
 
@@ -186,7 +194,7 @@ export class LibraryScanner {
 
 			stats.duration = Date.now() - startTime;
 
-			logger.info(`Scan completed for library ${this.libraryId}: ${stats.added} added, ${stats.updated} updated, ${stats.removed} removed, ${stats.thumbnailsGenerated} thumbnails generated, ${stats.errors.length} errors in ${stats.duration}ms`);
+			logger.info(`Scan completed for library ${this.libraryId}: ${stats.added} added, ${stats.updated} updated, ${stats.removed} removed, ${stats.filesProbed} probed, ${stats.thumbnailsGenerated} thumbnails generated, ${stats.errors.length} errors in ${stats.duration}ms`);
 
 			// Final progress update
 			onProgress?.({
@@ -234,24 +242,122 @@ export class LibraryScanner {
 		if (existing) {
 			// Check if file has been modified
 			if (existing.size !== file.size || existing.mtime !== mtimeString) {
-				db.prepare(`
-					UPDATE media 
-					SET size = ?, mtime = ?, media_type = ?, updated_at = datetime('now')
-					WHERE id = ?
-				`).run(file.size, mtimeString, file.mediaType, existing.id);
+				if (file.mediaType === 'video') {
+					const probe = await probeMediaFile(file.path);
+					db.prepare(`
+						UPDATE media 
+						SET size = ?, mtime = ?, media_type = ?,
+						    duration = ?, width = ?, height = ?,
+						    video_codec = ?, audio_codec = ?,
+						    container_format = ?, bitrate = ?,
+						    updated_at = datetime('now')
+						WHERE id = ?
+					`).run(
+						file.size, mtimeString, file.mediaType,
+						probe.duration, probe.width, probe.height,
+						probe.video_codec, probe.audio_codec,
+						probe.container_format, probe.bitrate,
+						existing.id
+					);
+					invalidateTranscodeCache(existing.id);
+					invalidateHlsCache(existing.id);
+					stats.filesProbed++;
+				} else {
+					db.prepare(`
+						UPDATE media 
+						SET size = ?, mtime = ?, media_type = ?, updated_at = datetime('now')
+						WHERE id = ?
+					`).run(file.size, mtimeString, file.mediaType, existing.id);
+				}
 				
 				stats.updated++;
 				logger.debug(`Updated media file: ${file.path}`);
 			}
 		} else {
-			// Insert new media file
-			db.prepare(`
-				INSERT INTO media (library_id, path, media_type, size, mtime, birthtime)
-				VALUES (?, ?, ?, ?, ?, ?)
-			`).run(this.libraryId, file.path, file.mediaType, file.size, mtimeString, birthtimeString);
+			if (file.mediaType === 'video') {
+				const probe = await probeMediaFile(file.path);
+				db.prepare(`
+					INSERT INTO media (library_id, path, media_type, size, mtime, birthtime,
+					    duration, width, height, video_codec, audio_codec, container_format, bitrate)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				`).run(
+					this.libraryId, file.path, file.mediaType, file.size, mtimeString, birthtimeString,
+					probe.duration, probe.width, probe.height,
+					probe.video_codec, probe.audio_codec,
+					probe.container_format, probe.bitrate
+				);
+				stats.filesProbed++;
+			} else {
+				db.prepare(`
+					INSERT INTO media (library_id, path, media_type, size, mtime, birthtime)
+					VALUES (?, ?, ?, ?, ?, ?)
+				`).run(this.libraryId, file.path, file.mediaType, file.size, mtimeString, birthtimeString);
+			}
 			
 			stats.added++;
 			logger.debug(`Added new media file: ${file.path}`);
+		}
+	}
+
+	private async probeUnprobedMedia(
+		stats: ScanStats,
+		onProgress?: (progress: ScanProgress) => void,
+		totalScannedFiles?: number
+	): Promise<void> {
+		const db = getDatabase();
+
+		const unprobedMedia = db.prepare(
+			'SELECT id, path, media_type FROM media WHERE library_id = ? AND media_type = ? AND video_codec IS NULL'
+		).all(this.libraryId, 'video') as Array<{ id: number; path: string; media_type: string }>;
+
+		const needingProbe = unprobedMedia.filter((media) => existsSync(media.path));
+
+		if (needingProbe.length === 0) return;
+
+		logger.info(`Probing ${needingProbe.length} video files in library ${this.libraryId}`);
+
+		let processedCount = 0;
+
+		for (const media of needingProbe) {
+			try {
+				const probe = await probeMediaFile(media.path);
+
+				db.prepare(`
+					UPDATE media 
+					SET duration = ?, width = ?, height = ?,
+					    video_codec = ?, audio_codec = ?,
+					    container_format = ?, bitrate = ?,
+					    updated_at = datetime('now')
+					WHERE id = ?
+				`).run(
+					probe.duration, probe.width, probe.height,
+					probe.video_codec, probe.audio_codec,
+					probe.container_format, probe.bitrate,
+					media.id
+				);
+
+				stats.filesProbed++;
+				processedCount++;
+
+				if (processedCount % 10 === 0) {
+					onProgress?.({
+						libraryId: this.libraryId,
+						totalFiles: totalScannedFiles || needingProbe.length,
+						processedFiles: totalScannedFiles || needingProbe.length,
+						addedFiles: stats.added,
+						updatedFiles: stats.updated,
+						filesProbed: stats.filesProbed,
+						errors: stats.errors.length,
+						status: 'processing'
+					});
+				}
+			} catch (error) {
+				logger.warn(`Failed to probe ${media.path}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+
+		if (stats.filesProbed > 0) {
+			logger.info(`Probed ${stats.filesProbed} video files in library ${this.libraryId}`);
 		}
 	}
 

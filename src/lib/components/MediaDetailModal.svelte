@@ -1,12 +1,22 @@
 <script lang="ts">
 	import type { Media, Person } from '$lib/server/db';
 	import { basename } from '$lib/utils/path';
-	import { formatBytes, formatDateTime } from '$lib/utils/format';
+	import { formatBytes, formatDateTime, formatDuration, formatBitrate } from '$lib/utils/format';
 	import TagSelector from './TagSelector.svelte';
 	import CreditSelector from './CreditSelector.svelte';
 	import TitleEditor from './TitleEditor.svelte';
 	import { X, Info, Pencil, ChevronLeft, ChevronRight, Heart } from 'lucide-svelte';
 	import { likesStore } from '$lib/stores/likes.svelte';
+	import { browser } from '$app/environment';
+	import type HlsType from 'hls.js';
+
+	let Hls = $state<typeof HlsType | null>(null);
+
+	if (browser) {
+		import('hls.js').then((mod) => {
+			Hls = mod.default;
+		});
+	}
 
 	interface Props {
 		media: Media | null;
@@ -26,9 +36,28 @@
 	let creditsAbortController: AbortController | null = null;
 	let mediaDataAbortController: AbortController | null = null;
 	let isLiking = $state(false);
+	let selectedQuality = $state<string>('original');
+	let availableQualities = $state<string[]>([]);
+	let needsTranscode = $state(false);
+	let hlsUrl = $state<string | null>(null);
+	let qualitiesAbortController: AbortController | null = null;
+	let videoElement = $state<HTMLVideoElement | null>(null);
+	let hlsInstance: HlsType | null = null;
+
+	function destroyHls() {
+		if (hlsInstance) {
+			hlsInstance.destroy();
+			hlsInstance = null;
+		}
+	}
 
 	$effect(() => {
 		mediaData = media;
+		selectedQuality = 'original';
+		availableQualities = [];
+		needsTranscode = false;
+		hlsUrl = null;
+		destroyHls();
 		if (creditsAbortController) {
 			creditsAbortController.abort();
 			creditsAbortController = null;
@@ -37,8 +66,16 @@
 			mediaDataAbortController.abort();
 			mediaDataAbortController = null;
 		}
+		if (qualitiesAbortController) {
+			qualitiesAbortController.abort();
+			qualitiesAbortController = null;
+		}
+		if (media?.media_type === 'video') {
+			loadQualities();
+		}
 		
 		return () => {
+			destroyHls();
 			if (creditsAbortController) {
 				creditsAbortController.abort();
 				creditsAbortController = null;
@@ -47,7 +84,51 @@
 				mediaDataAbortController.abort();
 				mediaDataAbortController = null;
 			}
+			if (qualitiesAbortController) {
+				qualitiesAbortController.abort();
+				qualitiesAbortController = null;
+			}
 		};
+	});
+
+	// Attach or detach hls.js when the video element or HLS state changes
+	$effect(() => {
+		const el = videoElement;
+		const useHls = hlsUrl && selectedQuality !== 'original' && needsTranscode;
+
+		if (!el || !useHls) {
+			destroyHls();
+			return;
+		}
+
+		// Safari supports HLS natively
+		if (el.canPlayType('application/vnd.apple.mpegurl')) {
+			el.src = hlsUrl!;
+			return () => {
+				el.removeAttribute('src');
+				el.load();
+			};
+		}
+
+		if (!Hls || !Hls.isSupported()) return;
+
+		destroyHls();
+		const hls = new Hls({
+			maxBufferLength: 30,
+			maxMaxBufferLength: 60
+		});
+		hls.loadSource(hlsUrl!);
+		hls.attachMedia(el);
+		hls.on(Hls!.Events.MANIFEST_PARSED, () => {
+			el.play().catch(() => {});
+		});
+		hls.on(Hls!.Events.ERROR, (_event, data) => {
+			if (data.fatal) {
+				console.error('HLS fatal error:', data);
+				hls.destroy();
+			}
+		});
+		hlsInstance = hls;
 	});
 
 	const handleBackdropClick = () => {
@@ -186,6 +267,72 @@
 	const hasPrevious = $derived(currentIndex !== undefined && currentIndex > 0);
 	const hasNext = $derived(currentIndex !== undefined && totalItems !== undefined && currentIndex < totalItems - 1);
 	const isLiked = $derived(media ? likesStore.isLiked(media.id) : false);
+	const useHlsPlayback = $derived(hlsUrl && selectedQuality !== 'original' && needsTranscode);
+	const videoSrc = $derived(
+		media
+			? useHlsPlayback
+				? '' // hls.js manages the src directly
+				: `/api/media/${media.id}/file${selectedQuality !== 'original' ? `?quality=${selectedQuality}` : ''}`
+			: ''
+	);
+
+	const qualityLabels: Record<string, string> = {
+		original: 'Original',
+		high: '1080p',
+		medium: '720p',
+		low: '480p'
+	};
+
+	const loadQualities = async () => {
+		if (!media) return;
+
+		if (qualitiesAbortController) {
+			qualitiesAbortController.abort();
+		}
+
+		qualitiesAbortController = new AbortController();
+		const currentMediaId = media.id;
+
+		try {
+			const response = await fetch(`/api/media/${currentMediaId}/qualities`, {
+				signal: qualitiesAbortController.signal
+			});
+
+			if (!response.ok) return;
+
+			if (media?.id === currentMediaId) {
+				const data = await response.json();
+				availableQualities = data.qualities;
+				needsTranscode = data.needsTranscode;
+				hlsUrl = data.hlsUrl;
+				// If the file needs transcoding, auto-select high quality
+				if (data.needsTranscode && data.qualities.includes('high')) {
+					selectedQuality = 'high';
+				}
+			}
+		} catch (err) {
+			if (err instanceof Error && err.name === 'AbortError') return;
+			console.error('Failed to load qualities', err);
+		} finally {
+			qualitiesAbortController = null;
+		}
+	};
+
+	const handleQualityChange = (e: Event) => {
+		const target = e.target as HTMLSelectElement;
+		// Tear down hls.js before manipulating the video element to avoid
+		// transient errors from hls.js operating on a cleared source.
+		destroyHls();
+		// Explicitly stop the current video load before switching quality.
+		// This forces the browser to abort the in-flight HTTP request,
+		// which triggers the server-side abort signal to kill ffmpeg.
+		if (videoElement) {
+			videoElement.pause();
+			videoElement.removeAttribute('src');
+			videoElement.load();
+		}
+		selectedQuality = target.value;
+	};
 
 </script>
 
@@ -211,12 +358,26 @@
 				/>
 			{:else if media.media_type === 'video'}
 				<video
-					src="/api/media/{media.id}/file"
+					bind:this={videoElement}
+					src={useHlsPlayback ? undefined : videoSrc}
 					controls
 					class="max-w-full max-h-full"
 				>
 					<track kind="captions" />
 				</video>
+				{#if availableQualities.length > 1}
+					<div class="absolute bottom-4 right-4 z-10" onclick={(e) => e.stopPropagation()}>
+						<select
+							value={selectedQuality}
+							onchange={handleQualityChange}
+							class="bg-black/70 text-white text-sm px-3 py-1.5 rounded-md border border-white/20 cursor-pointer hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-white/30"
+						>
+							{#each availableQualities as q}
+								<option value={q}>{qualityLabels[q] || q}</option>
+							{/each}
+						</select>
+					</div>
+				{/if}
 			{/if}
 
 			<button
@@ -326,6 +487,34 @@
 						<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">File Size</h4>
 						<p class="text-gray-900 dark:text-white">{formatBytes(media.size)}</p>
 					</div>
+
+					{#if media.duration !== null && media.duration !== undefined}
+						<div>
+							<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Duration</h4>
+							<p class="text-gray-900 dark:text-white">{formatDuration(media.duration)}</p>
+						</div>
+					{/if}
+
+					{#if media.width && media.height}
+						<div>
+							<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Resolution</h4>
+							<p class="text-gray-900 dark:text-white">{media.width} × {media.height}</p>
+						</div>
+					{/if}
+
+					{#if media.video_codec}
+						<div>
+							<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Codec</h4>
+							<p class="text-gray-900 dark:text-white uppercase">{media.video_codec}{#if media.audio_codec} / {media.audio_codec}{/if}</p>
+						</div>
+					{/if}
+
+					{#if media.bitrate}
+						<div>
+							<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Bitrate</h4>
+							<p class="text-gray-900 dark:text-white">{formatBitrate(media.bitrate)}</p>
+						</div>
+					{/if}
 
 					<div>
 						<h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Created</h4>

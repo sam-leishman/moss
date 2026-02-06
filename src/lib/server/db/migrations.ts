@@ -276,6 +276,65 @@ export const migrations: Migration[] = [
 			db.exec('DELETE FROM schema_version WHERE version = 7');
 		}
 	},
+	{
+		version: 8,
+		up: (db: Database.Database) => {
+			db.exec(`ALTER TABLE media ADD COLUMN duration REAL`);
+			db.exec(`ALTER TABLE media ADD COLUMN width INTEGER`);
+			db.exec(`ALTER TABLE media ADD COLUMN height INTEGER`);
+			db.exec(`ALTER TABLE media ADD COLUMN video_codec TEXT`);
+			db.exec(`ALTER TABLE media ADD COLUMN audio_codec TEXT`);
+			db.exec(`ALTER TABLE media ADD COLUMN container_format TEXT`);
+			db.exec(`ALTER TABLE media ADD COLUMN bitrate INTEGER`);
+			
+			const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
+			stmt.run(8);
+		},
+		down: (db: Database.Database) => {
+			// SQLite doesn't support DROP COLUMN before 3.35.0, so recreate the table
+			db.pragma('foreign_keys = OFF');
+			
+			try {
+				db.exec(`
+					CREATE TABLE media_backup AS SELECT 
+						id, library_id, path, title, media_type, size, mtime, birthtime, created_at, updated_at
+					FROM media
+				`);
+				db.exec('DROP TABLE media');
+				db.exec(`
+					CREATE TABLE media (
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						library_id INTEGER NOT NULL,
+						path TEXT NOT NULL UNIQUE,
+						title TEXT,
+						media_type TEXT NOT NULL CHECK(media_type IN ('image', 'video', 'animated')),
+						size INTEGER NOT NULL,
+						mtime TEXT NOT NULL,
+						birthtime TEXT NOT NULL DEFAULT (datetime('now')),
+						created_at TEXT NOT NULL DEFAULT (datetime('now')),
+						updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+						FOREIGN KEY (library_id) REFERENCES library(id) ON DELETE CASCADE
+					)
+				`);
+				db.exec(`
+					INSERT INTO media (id, library_id, path, title, media_type, size, mtime, birthtime, created_at, updated_at)
+					SELECT id, library_id, path, title, media_type, size, mtime, birthtime, created_at, updated_at
+					FROM media_backup
+				`);
+				db.exec('DROP TABLE media_backup');
+				db.exec(`
+					CREATE INDEX IF NOT EXISTS idx_media_library_id ON media(library_id);
+					CREATE INDEX IF NOT EXISTS idx_media_path ON media(path);
+					CREATE INDEX IF NOT EXISTS idx_media_media_type ON media(media_type);
+					CREATE INDEX IF NOT EXISTS idx_media_library_type ON media(library_id, media_type);
+				`);
+			} finally {
+				db.pragma('foreign_keys = ON');
+			}
+			
+			db.exec('DELETE FROM schema_version WHERE version = 8');
+		}
+	},
 	];
 
 export function getCurrentVersion(db: Database.Database): number {

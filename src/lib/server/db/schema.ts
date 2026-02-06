@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export const createTablesSQL = `
 -- Schema version tracking
@@ -28,6 +28,13 @@ CREATE TABLE IF NOT EXISTS media (
 	size INTEGER NOT NULL,
 	mtime TEXT NOT NULL,
 	birthtime TEXT NOT NULL DEFAULT (datetime('now')),
+	duration REAL,
+	width INTEGER,
+	height INTEGER,
+	video_codec TEXT,
+	audio_codec TEXT,
+	container_format TEXT,
+	bitrate INTEGER,
 	created_at TEXT NOT NULL DEFAULT (datetime('now')),
 	updated_at TEXT NOT NULL DEFAULT (datetime('now')),
 	FOREIGN KEY (library_id) REFERENCES library(id) ON DELETE CASCADE
