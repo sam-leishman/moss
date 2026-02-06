@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import FolderBrowser from './FolderBrowser.svelte';
+	import ScanProgressDialog from './ScanProgressDialog.svelte';
 	import type { Library } from '$lib/server/db';
 	import { Library as LibraryIcon, ChevronDown, Check, RefreshCw, Plus, X } from 'lucide-svelte';
 	import { fetchLibraries } from '$lib/utils/api';
@@ -22,7 +23,7 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let scanning = $state(false);
-	let scanStats = $state<{ added: number; updated: number; removed: number } | null>(null);
+	let showScanDialog = $state(false);
 	let successMessage = $state<string | null>(null);
 
 	let newLibraryName = $state('');
@@ -152,48 +153,26 @@
 		}
 	}
 
-	async function scanLibrary() {
+	function scanLibrary() {
 		if (!currentLibrary || scanning) return;
 
 		scanning = true;
 		error = null;
-		scanStats = null;
 		showDropdown = false;
+		showScanDialog = true;
+	}
 
-		try {
-			const response = await fetch(`/api/libraries/${currentLibrary.id}/scan`, {
-				method: 'POST'
-			});
-
-			const data = await response.json();
-
-			if (!response.ok) {
-				if (data.pathMissing) {
-					const errorMessage = data.error || 'Library folder does not exist or is not accessible. Please relocate or delete this library.';
-					await loadLibraries();
-					await invalidateAll();
-					error = errorMessage;
-				} else {
-					throw new Error(data.message || 'Failed to scan library');
-				}
-			} else {
-				scanStats = {
-					added: data.stats.added,
-					updated: data.stats.updated,
-					removed: data.stats.removed
-				};
-
-				if (data.errors && data.errors.length > 0) {
-					error = `Scan completed with ${data.errors.length} error(s)`;
-				}
-				
-				await loadLibraries();
-			}
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to scan library';
-		} finally {
-			scanning = false;
+	async function handleScanComplete(result: any) {
+		if (result?.pathMissing) {
+			error = result.error || 'Library folder does not exist or is not accessible.';
 		}
+		await loadLibraries();
+		await invalidateAll();
+	}
+
+	function handleScanDialogClose() {
+		showScanDialog = false;
+		scanning = false;
 	}
 
 	function closeDropdown(e: MouseEvent) {
@@ -275,40 +254,17 @@
 			</div>
 			<p class="text-sm text-red-800 dark:text-red-200">{error}</p>
 		</div>
-	{:else if scanStats}
-		<div class="fixed top-20 right-6 z-50 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4">
-			<div class="flex items-start justify-between mb-3">
-				<h4 class="font-semibold text-gray-900 dark:text-white">Scan Complete</h4>
-				<button onclick={() => scanStats = null} class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
-					<X class="w-5 h-5" />
-				</button>
-			</div>
-			<div class="space-y-2 text-sm">
-				{#if scanStats.added > 0}
-					<div class="flex justify-between">
-						<span class="text-gray-600 dark:text-gray-400">Added:</span>
-						<span class="font-medium text-green-600">{scanStats.added}</span>
-					</div>
-				{/if}
-				{#if scanStats.updated > 0}
-					<div class="flex justify-between">
-						<span class="text-gray-600 dark:text-gray-400">Updated:</span>
-						<span class="font-medium text-blue-600">{scanStats.updated}</span>
-					</div>
-				{/if}
-				{#if scanStats.removed > 0}
-					<div class="flex justify-between">
-						<span class="text-gray-600 dark:text-gray-400">Removed:</span>
-						<span class="font-medium text-red-600">{scanStats.removed}</span>
-					</div>
-				{/if}
-				{#if scanStats.added === 0 && scanStats.updated === 0 && scanStats.removed === 0}
-					<p class="text-gray-500 dark:text-gray-400">No changes detected</p>
-				{/if}
-			</div>
-		</div>
 	{/if}
 </div>
+
+{#if showScanDialog && currentLibrary}
+	<ScanProgressDialog
+		libraryId={currentLibrary.id}
+		libraryName={currentLibrary.name}
+		onClose={handleScanDialogClose}
+		onComplete={handleScanComplete}
+	/>
+{/if}
 
 {#if showCreateModal}
 	<div 
