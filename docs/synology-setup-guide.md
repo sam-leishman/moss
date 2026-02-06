@@ -83,8 +83,8 @@ Since your image is on GitHub Container Registry, you need to authenticate:
 
    **Environment Variables**:
    - Click **Add Variable**
-   - **Variable**: `NODE_ENV`
-   - **Value**: `production`
+   - **Variable**: `TZ`
+   - **Value**: `America/Denver` (or your timezone)
    - Click **Apply**
 
 6. Click **Apply** to create the container
@@ -100,19 +100,16 @@ services:
   moss:
     image: ghcr.io/your-username/moss:latest
     container_name: moss
+    user: "1026:100"  # Set to your UID:GID (run 'id' to find yours)
     restart: unless-stopped
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=production
     volumes:
-      - /volume1/docker/moss/data:/app/data
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - /volume1/your-media:/media:ro
+      - /volume1/docker/moss/config:/config
+      - /volume1/docker/moss/metadata:/metadata
+    environment:
+      - TZ=America/Denver
 ```
 
 1. In Container Manager, go to **Project** tab

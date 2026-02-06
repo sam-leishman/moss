@@ -32,14 +32,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install su-exec for stepping down from root
-RUN apk add --no-cache su-exec
-
-# Create default moss user and required directories
-RUN addgroup -g 1000 moss 2>/dev/null || addgroup moss && \
-    adduser -D -u 1000 -G moss moss 2>/dev/null || adduser -D -G moss moss && \
-    mkdir -p /config /metadata /media && \
-    chown -R moss:moss /app /config /metadata /media
+# Create required directories
+RUN mkdir -p /config /metadata /media
 
 # Install pnpm
 RUN npm install -g pnpm
@@ -53,10 +47,6 @@ RUN pnpm install --prod --frozen-lockfile
 # Copy built app from builder
 COPY --from=builder /app/build ./build
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-
 # Expose port
 EXPOSE 3000
 
@@ -65,12 +55,9 @@ VOLUME ["/config", "/metadata"]
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PUID=1000
-ENV PGID=1000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
 
-# Entrypoint handles UID/GID mapping and drops privileges
-ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["node", "build"]

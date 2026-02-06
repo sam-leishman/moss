@@ -4,6 +4,7 @@ services:
   moss:
     image: ghcr.io/sam-leishman/moss:latest
     container_name: moss
+    user: "1000:1000"  # Set to your user's UID:GID (run 'id' to find yours)
     ports:
       - "3000:3000"
     volumes:
@@ -12,10 +13,4 @@ services:
       - /path/to/your/metadata:/metadata
     environment:
       - TZ=America/Denver
-      # Optional: Override default container paths (usually not needed)
-      # - MEDIA_PATH=/media
-      # - CONFIG_DIR=/config
-      # - METADATA_DIR=/metadata
-      - PUID=1000
-      - PGID=1000
     restart: unless-stopped

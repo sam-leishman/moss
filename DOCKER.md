@@ -10,7 +10,7 @@ docker build -t moss:latest .
 
 ## Security Features
 
-- **Non-root user**: Container runs as user `moss` with configurable UID/GID
+- **Non-root user**: Use Docker's `user:` directive to run as your host user
 - **Health checks**: Built-in health monitoring via `/api/health` endpoint
 - **Minimal image**: Production stage excludes build dependencies
 - **Image metadata**: OCI-compliant labels for version tracking
@@ -29,7 +29,7 @@ docker build -t moss:latest .
 - `/config` - Persistent configuration and database (e.g., `/volume1/docker/moss/config`)
 - `/metadata` - Cached metadata and thumbnails (e.g., `/volume1/docker/moss/metadata`)
 
-**Note**: Use `PUID` and `PGID` environment variables to match your host user's permissions. Default is 1000:1000.
+**Note**: Use Docker's `user:` directive in your docker-compose.yml to match your host user's permissions.
 
 ## Important Development Notes
 
@@ -47,15 +47,13 @@ The `.env.example` file is only for local development with `pnpm dev`.
 
 ## User/Group Permissions
 
-The container runs as a non-root user with configurable UID/GID:
+The container uses Docker's built-in `user:` directive for permissions:
 
 ```yaml
-environment:
-  - PUID=1000  # Your user ID
-  - PGID=1000  # Your group ID
+user: "1000:1000"  # Your UID:GID
 ```
 
-To find your user/group ID on Synology:
+To find your user/group ID:
 ```bash
 id your-username
 ```

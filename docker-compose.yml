@@ -4,6 +4,7 @@ services:
   moss:
     image: moss:latest
     container_name: moss
+    user: "1000:1000"
     ports:
       - "3000:3000"
     volumes:
@@ -12,9 +13,4 @@ services:
       - /volume1/docker/moss/metadata:/metadata
     environment:
       - TZ=America/Denver
-      - PUID=1000
-      - PGID=1000
-      - MEDIA_PATH=/media
-      - CONFIG_DIR=/config
-      - METADATA_DIR=/metadata
     restart: unless-stopped
