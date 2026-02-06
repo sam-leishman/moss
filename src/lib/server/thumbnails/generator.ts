@@ -25,6 +25,7 @@ export const DEFAULT_THUMBNAIL_OPTIONS: Required<ThumbnailOptions> = {
 export class ThumbnailGenerator {
 	private metadataDir: string;
 	private thumbnailsDir: string;
+	private inFlight: Map<string, Promise<string>> = new Map();
 
 	constructor() {
 		this.metadataDir = getMetadataDir();
@@ -70,12 +71,35 @@ export class ThumbnailGenerator {
 		mediaType: MediaType,
 		options: ThumbnailOptions = {}
 	): Promise<string> {
-		const opts = { ...DEFAULT_THUMBNAIL_OPTIONS, ...options };
 		const thumbnailPath = this.getHashedPath(mediaPath);
 
 		if (existsSync(thumbnailPath)) {
 			return thumbnailPath;
 		}
+
+		// Coalesce concurrent requests for the same thumbnail
+		const existing = this.inFlight.get(thumbnailPath);
+		if (existing) {
+			return existing;
+		}
+
+		const promise = this.doGenerateThumbnail(mediaPath, mediaType, thumbnailPath, options);
+		this.inFlight.set(thumbnailPath, promise);
+
+		try {
+			return await promise;
+		} finally {
+			this.inFlight.delete(thumbnailPath);
+		}
+	}
+
+	private async doGenerateThumbnail(
+		mediaPath: string,
+		mediaType: MediaType,
+		thumbnailPath: string,
+		options: ThumbnailOptions
+	): Promise<string> {
+		const opts = { ...DEFAULT_THUMBNAIL_OPTIONS, ...options };
 
 		const thumbnailDir = dirname(thumbnailPath);
 		if (!existsSync(thumbnailDir)) {
@@ -158,8 +182,8 @@ export class ThumbnailGenerator {
 				.toFile(thumbnailPath);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.warn(`FFmpeg not available for ${sourcePath}, using placeholder: ${errorMessage}`);
-			await this.generatePlaceholderThumbnail(thumbnailPath, options, 'video');
+			logger.warn(`FFmpeg failed for ${sourcePath}: ${errorMessage}`);
+			throw error;
 		} finally {
 			const { unlinkSync } = await import('fs');
 			if (existsSync(tempPngPath)) {
@@ -170,25 +194,6 @@ export class ThumbnailGenerator {
 				}
 			}
 		}
-	}
-
-	private async generatePlaceholderThumbnail(
-		thumbnailPath: string,
-		options: Required<ThumbnailOptions>,
-		type: string
-	): Promise<void> {
-		const svg = `
-			<svg width="${options.width}" height="${options.height}" xmlns="http://www.w3.org/2000/svg">
-				<rect width="100%" height="100%" fill="#e5e7eb"/>
-				<text x="50%" y="50%" font-family="Arial" font-size="16" fill="#6b7280" text-anchor="middle" dominant-baseline="middle">
-					${type.toUpperCase()}
-				</text>
-			</svg>
-		`;
-
-		await sharp(Buffer.from(svg))
-			.webp({ quality: options.quality })
-			.toFile(thumbnailPath);
 	}
 
 	getThumbnailPath(mediaPath: string): string {

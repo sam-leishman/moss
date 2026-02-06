@@ -4,8 +4,11 @@ import type { Media } from '$lib/server/db';
 import { sanitizeInteger } from '$lib/server/security';
 import { requireLibraryAccess } from '$lib/server/auth';
 import { getThumbnailGenerator } from '$lib/server/thumbnails';
+import { getLogger } from '$lib/server/logging';
 import { existsSync, createReadStream } from 'fs';
 import type { RequestHandler } from './$types';
+
+const logger = getLogger('api:thumbnail');
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const db = getDatabase();
@@ -34,7 +37,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const stream = createReadStream(thumbnailPath);
 
 		stream.on('error', (err) => {
-			console.error('Thumbnail stream error:', err);
+			logger.error('Thumbnail stream error', err instanceof Error ? err : undefined);
 		});
 		
 		return new Response(stream as any, {
@@ -44,7 +47,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			}
 		});
 	} catch (err) {
-		const errorMessage = err instanceof Error ? err.message : String(err);
-		error(500, `Failed to generate thumbnail: ${errorMessage}`);
+		logger.debug(`Thumbnail not available for media ${mediaId}: ${err instanceof Error ? err.message : String(err)}`);
+		return new Response(null, {
+			status: 404,
+			headers: {
+				'Cache-Control': 'no-cache'
+			}
+		});
 	}
 };

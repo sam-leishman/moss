@@ -8,7 +8,7 @@
 	import MediaDetailModal from '$lib/components/MediaDetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import BulkEditingPanel from '$lib/components/BulkEditingPanel.svelte';
-	import { Check } from 'lucide-svelte';
+	import { Check, Film, Clapperboard, Image } from 'lucide-svelte';
 	import { basename } from '$lib/utils/path';
 
 	let { data }: { data: PageData } = $props();
@@ -28,6 +28,7 @@
 	let selectedPeople = $state<number[]>([]);
 	let likedOnly = $state(false);
 	let bulkSelectMode = $state(false);
+	let failedThumbnails = $state(new Set<number>());
 	let selectedMediaIds = $state<Set<number>>(new Set());
 	let showBulkEditPanel = $state(false);
 	let lastSelectedIndex = $state<number | null>(null);
@@ -452,11 +453,24 @@
 									onclick={(e) => toggleMediaSelection(media.id, e.shiftKey)}
 									class="w-full aspect-square rounded-lg overflow-hidden border-2 transition-all {selectedMediaIds.has(media.id) ? 'border-blue-600 ring-2 ring-blue-600' : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'}"
 								>
-									<img
-										src="/api/media/{media.id}/thumbnail"
-										alt={media.title || basename(media.path)}
-										class="w-full h-full object-cover"
-									/>
+									{#if failedThumbnails.has(media.id)}
+										<div class="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
+											{#if media.media_type === 'video'}
+												<Film class="w-10 h-10 text-gray-400 dark:text-gray-500" />
+											{:else if media.media_type === 'animated'}
+												<Clapperboard class="w-10 h-10 text-gray-400 dark:text-gray-500" />
+											{:else}
+												<Image class="w-10 h-10 text-gray-400 dark:text-gray-500" />
+											{/if}
+										</div>
+									{:else}
+										<img
+											src="/api/media/{media.id}/thumbnail?v={media.updated_at}"
+											alt={media.title || basename(media.path)}
+											class="w-full h-full object-cover"
+											onerror={() => { failedThumbnails.add(media.id); failedThumbnails = failedThumbnails; }}
+										/>
+									{/if}
 								</button>
 								{#if selectedMediaIds.has(media.id)}
 									<div class="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">

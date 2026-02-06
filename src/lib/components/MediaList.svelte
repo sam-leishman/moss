@@ -11,6 +11,8 @@
 
 	let { items, onItemClick }: Props = $props();
 
+	let failedThumbnails = $state(new Set<number>());
+
 	const handleClick = (media: Media) => {
 		if (onItemClick) {
 			onItemClick(media);
@@ -27,12 +29,25 @@
 			type="button"
 		>
 			<div class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-				<img
-					src="/api/media/{media.id}/thumbnail"
-					alt={media.title || basename(media.path)}
-					class="w-full h-full object-cover"
-					loading="lazy"
-				/>
+				{#if failedThumbnails.has(media.id)}
+					<div class="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
+						{#if media.media_type === 'video'}
+							<Film class="w-8 h-8 text-gray-400 dark:text-gray-500" />
+						{:else if media.media_type === 'animated'}
+							<Clapperboard class="w-8 h-8 text-gray-400 dark:text-gray-500" />
+						{:else}
+							<Image class="w-8 h-8 text-gray-400 dark:text-gray-500" />
+						{/if}
+					</div>
+				{:else}
+					<img
+						src="/api/media/{media.id}/thumbnail?v={media.updated_at}"
+						alt={media.title || basename(media.path)}
+						class="w-full h-full object-cover"
+						loading="lazy"
+						onerror={() => { failedThumbnails.add(media.id); failedThumbnails = failedThumbnails; }}
+					/>
+				{/if}
 			</div>
 
 			<div class="flex-1 min-w-0">

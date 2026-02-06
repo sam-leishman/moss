@@ -45,6 +45,8 @@
 		}
 	});
 
+	let thumbnailFailed = $state(false);
+
 	const isLiked = $derived(likesStore.isLiked(media.id));
 	const displayTitle = $derived(media.title || basename(media.path));
 </script>
@@ -56,12 +58,19 @@
 	tabindex="0"
 	onkeydown={(e) => e.key === 'Enter' && handleClick()}
 >
-	<img
-		src="/api/media/{media.id}/thumbnail"
-		alt={displayTitle}
-		class="w-full h-full object-cover"
-		loading="lazy"
-	/>
+	{#if thumbnailFailed}
+		<div class="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
+			<IconComponent class="w-10 h-10 text-gray-400 dark:text-gray-500" />
+		</div>
+	{:else}
+		<img
+			src="/api/media/{media.id}/thumbnail?v={media.updated_at}"
+			alt={displayTitle}
+			class="w-full h-full object-cover"
+			loading="lazy"
+			onerror={() => thumbnailFailed = true}
+		/>
+	{/if}
 	
 	<button
 		type="button"

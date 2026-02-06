@@ -32,6 +32,12 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Install runtime and build dependencies for thumbnail generation
+# - ffmpeg: video frame extraction
+# - vips-dev: image processing library for sharp
+# - python3, make, g++: required for sharp compilation
+RUN apk add --no-cache ffmpeg vips-dev python3 make g++
+
 # Create required directories
 RUN mkdir -p /config /metadata /media
 
@@ -42,6 +48,9 @@ RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Install production dependencies only
+# Use pre-built binaries for sharp to avoid compilation issues
+ENV SHARP_IGNORE_GLOBAL_LIBVIPS=1
+ENV npm_config_sharp_libvips_binary_host=https://github.com/lovell/sharp-libvips/releases
 RUN pnpm install --prod --frozen-lockfile
 
 # Copy built app from builder

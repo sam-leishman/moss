@@ -17,6 +17,9 @@ importers:
       lucide-svelte:
         specifier: 0.454.0
         version: 0.454.0(svelte@5.49.2)
+      node-addon-api:
+        specifier: ^8.0.0
+        version: 8.5.0
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -1500,6 +1503,10 @@ packages:
   node-abi@3.87.0:
     resolution: {integrity: sha512-+CGM1L1CgmtheLcBuleyYOn7NWPVu0s0EJH2C4puxgEZb9h8QpR9G2dBfZJOAUhi7VQxuBPMd0hiISWcTyiYyQ==}
     engines: {node: '>=10'}
+
+  node-addon-api@8.5.0:
+    resolution: {integrity: sha512-/bRZty2mXUIFY/xU5HLvveNHlswNJej+RnxBjOMkidWfwZzgTbPG1E3K5TOxRLOR+5hX7bSofy8yf1hZevMS8A==}
+    engines: {node: ^18 || ^20 || >= 21}
 
   obug@2.1.1:
     resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
@@ -3054,6 +3061,8 @@ snapshots:
   node-abi@3.87.0:
     dependencies:
       semver: 7.7.3
+
+  node-addon-api@8.5.0: {}
 
   obug@2.1.1: {}
 

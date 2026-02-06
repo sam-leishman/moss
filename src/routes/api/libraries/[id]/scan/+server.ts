@@ -37,6 +37,7 @@ export const POST = async ({ params }: { params: { id: string } }) => {
 					added: stats.added,
 					updated: stats.updated,
 					removed: stats.removed,
+					thumbnailsGenerated: stats.thumbnailsGenerated,
 					errors: stats.errors.length,
 					duration: stats.duration
 				}
@@ -52,6 +53,7 @@ export const POST = async ({ params }: { params: { id: string } }) => {
 				added: stats.added,
 				updated: stats.updated,
 				removed: stats.removed,
+				thumbnailsGenerated: stats.thumbnailsGenerated,
 				errors: stats.errors.length,
 				duration: stats.duration
 			},

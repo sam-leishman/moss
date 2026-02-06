@@ -15,6 +15,7 @@ export interface ScanProgress {
 	addedFiles: number;
 	updatedFiles: number;
 	errors: number;
+	thumbnailsGenerated?: number;
 	status: 'scanning' | 'processing' | 'completed' | 'failed';
 }
 
@@ -23,6 +24,7 @@ export interface ScanStats {
 	added: number;
 	updated: number;
 	removed: number;
+	thumbnailsGenerated: number;
 	errors: Array<{ path: string; error: string }>;
 	duration: number;
 }
@@ -43,6 +45,7 @@ export class LibraryScanner {
 			added: 0,
 			updated: 0,
 			removed: 0,
+			thumbnailsGenerated: 0,
 			errors: [],
 			duration: 0
 		};
@@ -162,6 +165,7 @@ export class LibraryScanner {
 							processedFiles: processedCount,
 							addedFiles: stats.added,
 							updatedFiles: stats.updated,
+							thumbnailsGenerated: stats.thumbnailsGenerated,
 							errors: stats.errors.length,
 							status: 'processing'
 						});
@@ -173,13 +177,16 @@ export class LibraryScanner {
 				}
 			}
 
+			// Ensure all media has valid (non-placeholder) thumbnails
+			await this.ensureThumbnails(stats, onProgress, scanResult.totalFiles);
+
 			// Clean up orphaned media
 			const orphanedCount = await this.cleanupOrphanedMedia();
 			stats.removed = orphanedCount;
 
 			stats.duration = Date.now() - startTime;
 
-			logger.info(`Scan completed for library ${this.libraryId}: ${stats.added} added, ${stats.updated} updated, ${stats.removed} removed, ${stats.errors.length} errors in ${stats.duration}ms`);
+			logger.info(`Scan completed for library ${this.libraryId}: ${stats.added} added, ${stats.updated} updated, ${stats.removed} removed, ${stats.thumbnailsGenerated} thumbnails generated, ${stats.errors.length} errors in ${stats.duration}ms`);
 
 			// Final progress update
 			onProgress?.({
@@ -245,6 +252,58 @@ export class LibraryScanner {
 			
 			stats.added++;
 			logger.debug(`Added new media file: ${file.path}`);
+		}
+	}
+
+	private async ensureThumbnails(
+		stats: ScanStats,
+		onProgress?: (progress: ScanProgress) => void,
+		totalScannedFiles?: number
+	): Promise<void> {
+		const db = getDatabase();
+		const thumbnailGen = getThumbnailGenerator();
+
+		const mediaFiles = db.prepare('SELECT id, path, media_type FROM media WHERE library_id = ?')
+			.all(this.libraryId) as Array<{ id: number; path: string; media_type: string }>;
+
+		const needingThumbnails = mediaFiles.filter((media) => {
+			if (!existsSync(media.path)) return false;
+			return !thumbnailGen.thumbnailExists(media.path);
+		});
+
+		if (needingThumbnails.length === 0) return;
+
+		logger.info(`Generating thumbnails for ${needingThumbnails.length} media files in library ${this.libraryId}`);
+
+		let processedCount = 0;
+
+		for (const media of needingThumbnails) {
+			try {
+				await thumbnailGen.generateThumbnail(media.path, media.media_type as any);
+
+				db.prepare('UPDATE media SET updated_at = datetime(\'now\') WHERE id = ?').run(media.id);
+				stats.thumbnailsGenerated++;
+				processedCount++;
+
+				if (processedCount % 10 === 0) {
+					onProgress?.({
+						libraryId: this.libraryId,
+						totalFiles: totalScannedFiles || mediaFiles.length,
+						processedFiles: totalScannedFiles || mediaFiles.length,
+						addedFiles: stats.added,
+						updatedFiles: stats.updated,
+						thumbnailsGenerated: stats.thumbnailsGenerated,
+						errors: stats.errors.length,
+						status: 'processing'
+					});
+				}
+			} catch (error) {
+				logger.warn(`Failed to generate thumbnail for ${media.path}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+
+		if (stats.thumbnailsGenerated > 0) {
+			logger.info(`Generated ${stats.thumbnailsGenerated} thumbnails for library ${this.libraryId}`);
 		}
 	}
 
