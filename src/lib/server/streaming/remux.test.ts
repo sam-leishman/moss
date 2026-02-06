@@ -39,14 +39,14 @@ describe('getStreamDecision', () => {
 			expect(decision.action).toBe('remux');
 		});
 
-		it('remuxes H.264/AAC in MP4 container (for fast-start guarantee)', () => {
+		it('does not remux H.264/AAC in MP4 container (direct serve)', () => {
 			const decision = getStreamDecision('h264', 'aac', 'mov');
-			expect(decision.action).toBe('remux');
+			expect(decision.action).toBe('direct');
 		});
 
-		it('remuxes H.264/AAC in mp4 container', () => {
+		it('does not remux H.264/AAC in mp4 container (direct serve)', () => {
 			const decision = getStreamDecision('h264', 'aac', 'mp4');
-			expect(decision.action).toBe('remux');
+			expect(decision.action).toBe('direct');
 		});
 
 		it('remuxes H.264/MP3 in MKV', () => {
@@ -117,19 +117,19 @@ describe('getStreamDecision', () => {
 	});
 
 	describe('edge cases', () => {
-		it('handles isom container as MP4-family', () => {
+		it('handles isom container as MP4-family (direct serve)', () => {
 			const decision = getStreamDecision('h264', 'aac', 'isom');
-			expect(decision.action).toBe('remux');
+			expect(decision.action).toBe('direct');
 		});
 
-		it('handles m4v container as MP4-family', () => {
+		it('handles m4v container as MP4-family (direct serve)', () => {
 			const decision = getStreamDecision('h264', 'aac', 'm4v');
-			expect(decision.action).toBe('remux');
+			expect(decision.action).toBe('direct');
 		});
 
-		it('handles 3gp container as MP4-family', () => {
+		it('handles 3gp container as MP4-family (direct serve)', () => {
 			const decision = getStreamDecision('h264', 'aac', '3gp');
-			expect(decision.action).toBe('remux');
+			expect(decision.action).toBe('direct');
 		});
 	});
 });

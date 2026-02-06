@@ -6,6 +6,7 @@
 	import CreditSelector from './CreditSelector.svelte';
 	import TitleEditor from './TitleEditor.svelte';
 	import { X, Info, Pencil, ChevronLeft, ChevronRight, Heart } from 'lucide-svelte';
+	import VideoPlayer from './VideoPlayer.svelte';
 	import { likesStore } from '$lib/stores/likes.svelte';
 	import { browser } from '$app/environment';
 	import type HlsType from 'hls.js';
@@ -276,13 +277,6 @@
 			: ''
 	);
 
-	const qualityLabels: Record<string, string> = {
-		original: 'Original',
-		high: '1080p',
-		medium: '720p',
-		low: '480p'
-	};
-
 	const loadQualities = async () => {
 		if (!media) return;
 
@@ -318,8 +312,7 @@
 		}
 	};
 
-	const handleQualityChange = (e: Event) => {
-		const target = e.target as HTMLSelectElement;
+	const handleQualityChange = (quality: string) => {
 		// Tear down hls.js before manipulating the video element to avoid
 		// transient errors from hls.js operating on a cleared source.
 		destroyHls();
@@ -331,7 +324,7 @@
 			videoElement.removeAttribute('src');
 			videoElement.load();
 		}
-		selectedQuality = target.value;
+		selectedQuality = quality;
 	};
 
 </script>
@@ -357,27 +350,15 @@
 					class="max-w-full max-h-full object-contain"
 				/>
 			{:else if media.media_type === 'video'}
-				<video
-					bind:this={videoElement}
-					src={useHlsPlayback ? undefined : videoSrc}
-					controls
-					class="max-w-full max-h-full"
-				>
-					<track kind="captions" />
-				</video>
-				{#if availableQualities.length > 1}
-					<div class="absolute bottom-4 right-4 z-10" onclick={(e) => e.stopPropagation()}>
-						<select
-							value={selectedQuality}
-							onchange={handleQualityChange}
-							class="bg-black/70 text-white text-sm px-3 py-1.5 rounded-md border border-white/20 cursor-pointer hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-white/30"
-						>
-							{#each availableQualities as q}
-								<option value={q}>{qualityLabels[q] || q}</option>
-							{/each}
-						</select>
-					</div>
-				{/if}
+				<VideoPlayer
+					src={videoSrc}
+					duration={media.duration}
+					bind:videoElement
+					{availableQualities}
+					{selectedQuality}
+					onQualityChange={handleQualityChange}
+					useHlsPlayback={!!useHlsPlayback}
+				/>
 			{/if}
 
 			<button

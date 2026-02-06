@@ -51,10 +51,10 @@ export function getStreamDecision(
 	const isMP4 = containerFormat ? MP4_CONTAINERS.has(containerFormat) : false;
 
 	if (isMP4) {
-		// Already MP4 with compatible codecs. We still remux to fragmented MP4
-		// to guarantee fast-start (moov atom at front). The -c copy remux is
-		// near-zero CPU cost, so this is cheaper than detecting moov position.
-		return { action: 'remux', reason: 'remuxing to fragmented MP4 for guaranteed fast-start' };
+		// Already MP4 with compatible codecs — serve directly with Range
+		// support for full seeking. Browsers handle MP4 trailing moov atoms
+		// well enough for playback with compatible codecs.
+		return { action: 'direct', reason: 'MP4-family container with compatible codecs' };
 	}
 
 	// Compatible codecs but wrong container (e.g. MKV, AVI)

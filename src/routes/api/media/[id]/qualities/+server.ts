@@ -23,7 +23,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	}
 
 	const decision = getStreamDecision(media.video_codec, media.audio_codec, media.container_format);
-	const needsTranscode = decision.action === 'transcode';
+	const needsTranscode = decision.action === 'transcode' || decision.action === 'remux';
 
 	// Get available quality presets based on source resolution
 	const qualities = getAvailableQualities(media.width, media.height);

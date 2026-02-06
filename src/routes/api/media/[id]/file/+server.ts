@@ -5,7 +5,6 @@ import { sanitizeInteger } from '$lib/server/security';
 import { requireLibraryAccess } from '$lib/server/auth';
 import {
 	getStreamDecision,
-	createRemuxStream,
 	createTranscodeStream,
 	createCachedTranscodeStream,
 	hasTranscodeCache,
@@ -124,23 +123,10 @@ export const GET: RequestHandler = async ({ params, request, locals, url }) => {
 			return await serveTranscoded(media, quality);
 		}
 
-		if (decision.action === 'remux') {
-			// Pipe through ffmpeg -c copy to produce fragmented MP4.
-			// This handles both non-MP4 containers (MKV, AVI) and MP4s with
-			// trailing moov atoms. Near-zero CPU cost, zero quality loss.
-			const { stream, process: ffmpeg } = createRemuxStream(media.path);
-
-			return new Response(nodeStreamToWeb(stream, ffmpeg), {
-				headers: {
-					'Content-Type': 'video/mp4',
-					'Cache-Control': 'no-cache',
-					'Transfer-Encoding': 'chunked'
-				}
-			});
-		}
-
-		if (decision.action === 'transcode') {
-			// Incompatible codec — transcode to H.264/AAC at high quality
+		if (decision.action === 'remux' || decision.action === 'transcode') {
+			// Non-MP4 container or incompatible codec — transcode to H.264/AAC.
+			// The old remux pipe (ffmpeg -c copy, chunked) was non-seekable in
+			// browsers. Transcoding via HLS provides seekable playback.
 			return await serveTranscoded(media, 'high');
 		}
 	}
