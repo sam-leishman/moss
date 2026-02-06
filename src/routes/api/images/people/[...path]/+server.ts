@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { resolve, join } from 'path';
-import { existsSync, createReadStream } from 'fs';
+import { existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { getMetadataDir } from '$lib/server/config';
 import type { RequestHandler } from './$types';
 import { getLogger } from '$lib/server/logging';
