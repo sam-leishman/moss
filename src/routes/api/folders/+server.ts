@@ -56,7 +56,7 @@ export const GET = async ({ url }: { url: URL }) => {
 		return json({
 			currentPath: targetPath,
 			displayPath: currentDisplayPath === '/' ? '/' : currentDisplayPath,
-			mediaRoot: '/media',
+			mediaRoot: mediaRoot,
 			parentPath: targetPath !== mediaRoot ? join(targetPath, '..') : null,
 			parentDisplayPath,
 			folders

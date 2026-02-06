@@ -15,7 +15,7 @@ if [ -n "$CURRENT_GID" ] && [ "$CURRENT_GID" != "$PGID" ]; then
     if [ -n "$EXISTING_GROUP" ] && [ "$EXISTING_GROUP" != "moss" ]; then
         # Target GID in use, add moss to that group instead
         addgroup moss "$EXISTING_GROUP" 2>/dev/null || true
-        sed -i "s/^moss:\(.*\):\([0-9]*\):/moss:\1:${PGID}:/" /etc/passwd
+        sed -i "s/^moss:x:\([^:]*\):\([^:]*\):/moss:x:\1:${PGID}:/" /etc/passwd
     else
         sed -i "s/^moss:\([^:]*\):${CURRENT_GID}:/moss:\1:${PGID}:/" /etc/group
     fi
