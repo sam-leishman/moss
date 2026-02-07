@@ -335,6 +335,29 @@ export const migrations: Migration[] = [
 			db.exec('DELETE FROM schema_version WHERE version = 8');
 		}
 	},
+	{
+		version: 9,
+		up: (db: Database.Database) => {
+			db.exec(`
+				CREATE TABLE IF NOT EXISTS setting (
+					key TEXT PRIMARY KEY,
+					value TEXT NOT NULL,
+					updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+				)
+			`);
+			
+			db.prepare(
+				"INSERT INTO setting (key, value) VALUES ('default_credentials_changed', '0')"
+			).run();
+			
+			const stmt = db.prepare('INSERT INTO schema_version (version) VALUES (?)');
+			stmt.run(9);
+		},
+		down: (db: Database.Database) => {
+			db.exec('DROP TABLE IF EXISTS setting');
+			db.exec('DELETE FROM schema_version WHERE version = 9');
+		}
+	},
 	];
 
 export function getCurrentVersion(db: Database.Database): number {

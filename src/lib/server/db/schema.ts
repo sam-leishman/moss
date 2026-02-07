@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export const createTablesSQL = `
 -- Schema version tracking
@@ -114,6 +114,13 @@ CREATE TABLE IF NOT EXISTS user_media_like (
 	PRIMARY KEY (user_id, media_id),
 	FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
 	FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
+);
+
+-- Application settings (key-value store)
+CREATE TABLE IF NOT EXISTS setting (
+	key TEXT PRIMARY KEY,
+	value TEXT NOT NULL,
+	updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `;
 

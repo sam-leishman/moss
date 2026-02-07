@@ -110,3 +110,9 @@ export interface UserMediaLike {
 	media_id: number;
 	created_at: string;
 }
+
+export interface Setting {
+	key: string;
+	value: string;
+	updated_at: string;
+}

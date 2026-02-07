@@ -15,5 +15,6 @@ export type {
 	User,
 	Session,
 	LibraryPermission,
-	UserMediaLike
+	UserMediaLike,
+	Setting
 } from './types';

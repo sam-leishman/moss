@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { requireAdmin } from '$lib/server/auth';
 import { getDatabase } from '$lib/server/db';
 import { hashPassword, validatePassword } from '$lib/server/auth/password';
+import { markDefaultCredentialsChanged, hasDefaultCredentials } from '$lib/server/settings';
 import { handleError } from '$lib/server/errors';
 import { getLogger } from '$lib/server/logging';
 
@@ -40,6 +41,10 @@ export const POST = async ({ locals, params, request }: any) => {
 		`).run(passwordHash, userId);
 		
 		db.prepare('DELETE FROM session WHERE user_id = ?').run(userId);
+		
+		if (hasDefaultCredentials(db)) {
+			markDefaultCredentialsChanged(db);
+		}
 		
 		logger.info(`Password changed for user: ${user.username}`, { actor: admin.username });
 		

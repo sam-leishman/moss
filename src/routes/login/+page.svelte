@@ -8,12 +8,25 @@
 	let rememberMe = $state(false);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+	let showDefaultCredentials = $state(false);
 
 	// Reactive redirect after auth is initialized
 	$effect(() => {
 		if (authStore.initialized && authStore.isAuthenticated) {
 			goto('/');
 		}
+	});
+
+	// Check if default credentials are still active
+	$effect(() => {
+		fetch('/api/auth/setup-status')
+			.then((res) => res.json())
+			.then((data) => {
+				showDefaultCredentials = data.showDefaultCredentials ?? false;
+			})
+			.catch(() => {
+				showDefaultCredentials = false;
+			});
 	});
 
 	const handleSubmit = async (e: Event) => {
@@ -107,18 +120,20 @@
 				</button>
 			</form>
 
-			<div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-				<div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
-					<p class="text-sm text-blue-800 dark:text-blue-200">
-						<strong>Default credentials:</strong><br />
-						Username: <code class="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">admin</code><br />
-						Password: <code class="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">admin</code>
-					</p>
-					<p class="text-xs text-blue-700 dark:text-blue-300 mt-2">
-						Please change the default password after first login.
-					</p>
+			{#if showDefaultCredentials}
+				<div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+					<div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+						<p class="text-sm text-blue-800 dark:text-blue-200">
+							<strong>Default credentials:</strong><br />
+							Username: <code class="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">admin</code><br />
+							Password: <code class="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">admin</code>
+						</p>
+						<p class="text-xs text-blue-700 dark:text-blue-300 mt-2">
+							Please change the default password after first login.
+						</p>
+					</div>
 				</div>
-			</div>
+			{/if}
 		</div>
 	</div>
 </div>

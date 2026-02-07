@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { getDatabase } from '$lib/server/db';
 import { requireAuth, verifyPassword, hashPassword, validatePassword, deleteAllUserSessions } from '$lib/server/auth';
+import { markDefaultCredentialsChanged, hasDefaultCredentials } from '$lib/server/settings';
 import { ValidationError, handleError } from '$lib/server/errors';
 import { getLogger } from '$lib/server/logging';
 import type { RequestHandler } from './$types';
@@ -35,6 +36,10 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 		
 		if (currentSessionId) {
 			cookies.delete('session', { path: '/' });
+		}
+		
+		if (hasDefaultCredentials(db)) {
+			markDefaultCredentialsChanged(db);
 		}
 		
 		logger.info(`Password changed for user: ${user.username} (id: ${user.id})`);
