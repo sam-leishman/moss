@@ -1,8 +1,7 @@
 <script lang="ts">
 	import type { Tag } from '$lib/server/db';
-	import { Tag as TagIcon, Trash2, Loader2, Pencil, Globe } from 'lucide-svelte';
-	import { onMount } from 'svelte';
-
+	import { Tag as TagIcon, Trash2, Loader2, Pencil, Globe, Search } from 'lucide-svelte';
+	
 	interface Props {
 		onTagsChange?: () => void;
 		libraryId?: number;
@@ -21,6 +20,7 @@
 	let editTagName = $state('');
 	let editIsGlobal = $state(false);
 	let updating = $state(false);
+	let searchQuery = $state('');
 	let showCrossLibraryWarning = $state(false);
 	let crossLibraryUsage = $state<Array<{ library_id: number; library_name: string; count: number }>>([]);
 	let totalAffectedItems = $state(0);
@@ -250,7 +250,19 @@
 
 	<div>
 		<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Existing Tags ({tags.length})</h4>
-		
+
+		{#if tags.length > 0}
+			<div class="relative mb-4">
+				<Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+				<input
+					type="text"
+					bind:value={searchQuery}
+					placeholder="Search tags..."
+					class="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				/>
+			</div>
+		{/if}
+
 		{#if loading}
 			<div class="text-center py-8 text-gray-500 dark:text-gray-400">
 				<Loader2 class="inline-block animate-spin h-8 w-8" />
@@ -263,8 +275,15 @@
 				<p class="text-sm">Create your first tag above</p>
 			</div>
 		{:else}
-			{@const globalTags = tags.filter(t => t.is_global === 1)}
-			{@const libraryTags = tags.filter(t => t.is_global === 0)}
+			{@const query = searchQuery.trim().toLowerCase()}
+			{@const filtered = query ? tags.filter(t => t.name.toLowerCase().includes(query)) : tags}
+			{@const globalTags = filtered.filter(t => t.is_global === 1)}
+			{@const libraryTags = filtered.filter(t => t.is_global === 0)}
+			{#if filtered.length === 0}
+				<div class="text-center py-8 text-gray-500 dark:text-gray-400">
+					<p class="text-sm">No tags matching "{searchQuery.trim()}"</p>
+				</div>
+			{:else}
 			
 			<div class="space-y-4 max-h-96 overflow-y-auto">
 				{#if globalTags.length > 0}
@@ -346,6 +365,7 @@
 					</div>
 				{/if}
 			</div>
+			{/if}
 		{/if}
 	</div>
 </div>
