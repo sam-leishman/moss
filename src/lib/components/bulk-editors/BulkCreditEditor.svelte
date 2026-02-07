@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { User, Check, Circle } from 'lucide-svelte';
+	import { User, Check, Circle, Search } from 'lucide-svelte';
 
 	interface PersonWithState {
 		id: number;
@@ -19,6 +19,18 @@
 
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+	let searchQuery = $state('');
+	let searchInputRef = $state<HTMLInputElement | null>(null);
+
+	const filteredPeople = $derived(
+		searchQuery.trim()
+			? people.filter(person => person.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+			: people
+	);
+
+	export const focusSearch = () => {
+		queueMicrotask(() => searchInputRef?.focus());
+	};
 
 	const handlePersonClick = async (person: PersonWithState) => {
 		loading = true;
@@ -76,6 +88,17 @@
 	{/if}
 
 	<div>
+		<div class="relative mb-3">
+			<Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+			<input
+				type="text"
+				bind:value={searchQuery}
+				bind:this={searchInputRef}
+				placeholder="Search people..."
+				class="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+			/>
+		</div>
+
 		<div class="flex items-center justify-between mb-3">
 			<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">People</h4>
 			<div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
@@ -91,9 +114,11 @@
 		</div>
 		{#if people.length === 0}
 			<p class="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No people available. Create people first.</p>
+		{:else if filteredPeople.length === 0}
+			<p class="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No people matching "{searchQuery.trim()}"</p>
 		{:else}
 			<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-				{#each people as person (person.id)}
+				{#each filteredPeople as person (person.id)}
 					<button
 						type="button"
 						onclick={() => handlePersonClick(person)}

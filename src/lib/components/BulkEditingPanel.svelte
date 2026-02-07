@@ -34,6 +34,8 @@
 	}
 
 	let activeTab = $state<TabType>('tags');
+	let tagEditorRef = $state<BulkTagEditor | null>(null);
+	let creditEditorRef = $state<BulkCreditEditor | null>(null);
 	let propertyState = $state<PropertyState>({ tags: [], credits: [] });
 	let loadingState = $state(false);
 	let showLoadingState = $state(false);
@@ -199,6 +201,25 @@
 		{ id: 'tags', label: 'Tags' },
 		{ id: 'credits', label: 'Credits' }
 	];
+
+	const switchTab = (tabId: TabType) => {
+		activeTab = tabId;
+	};
+
+	let hasAutoFocused = $state(false);
+
+	$effect(() => {
+		if (!loadingState && propertyState.tags.length + propertyState.credits.length > 0) {
+			if (!hasAutoFocused) {
+				hasAutoFocused = true;
+				tagEditorRef?.focusSearch();
+			} else if (activeTab === 'tags') {
+				tagEditorRef?.focusSearch();
+			} else if (activeTab === 'credits') {
+				creditEditorRef?.focusSearch();
+			}
+		}
+	});
 </script>
 
 <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-black/50">
@@ -227,7 +248,7 @@
 				{#each tabs as tab (tab.id)}
 					<button
 						type="button"
-						onclick={() => activeTab = tab.id}
+						onclick={() => switchTab(tab.id)}
 						class="flex-1 px-4 py-3 text-sm font-medium border-b-2 transition-colors {activeTab === tab.id ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'}"
 					>
 						{tab.label}
@@ -288,11 +309,13 @@
 			{:else}
 				{#if activeTab === 'tags'}
 					<BulkTagEditor
+						bind:this={tagEditorRef}
 						tags={propertyState.tags}
 						onApply={(operation, tagIds) => handleBulkEdit('tags', operation, tagIds)}
 					/>
 				{:else if activeTab === 'credits'}
 					<BulkCreditEditor
+						bind:this={creditEditorRef}
 						people={propertyState.credits}
 						onApply={(operation, personIds) => handleBulkEdit('credits', operation, personIds)}
 					/>
