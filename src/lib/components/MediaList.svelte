@@ -7,9 +7,10 @@
 	interface Props {
 		items: Media[];
 		onItemClick?: (media: Media) => void;
+		onItemContextMenu?: (media: Media, e: MouseEvent) => void;
 	}
 
-	let { items, onItemClick }: Props = $props();
+	let { items, onItemClick, onItemContextMenu }: Props = $props();
 
 	let failedThumbnails = $state(new Set<number>());
 
@@ -26,6 +27,7 @@
 		<button
 			class="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer text-left"
 			onclick={() => handleClick(media)}
+			oncontextmenu={(e) => { if (onItemContextMenu) { e.preventDefault(); onItemContextMenu(media, e); } }}
 			type="button"
 		>
 			<div class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">

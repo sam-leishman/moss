@@ -9,6 +9,7 @@
 	import MediaDetailModal from '$lib/components/MediaDetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import BulkEditingPanel from '$lib/components/BulkEditingPanel.svelte';
+	import MediaContextMenu from '$lib/components/MediaContextMenu.svelte';
 	import { Check, Film, Clapperboard, Image } from 'lucide-svelte';
 	import { basename } from '$lib/utils/path';
 	import { fetchPersonLibraries } from '$lib/utils/api';
@@ -42,6 +43,7 @@
 	let showSelectAllPagesBanner = $state(false);
 	let isSelectingAllPages = $state(false);
 	let selectAllPagesError = $state<string | null>(null);
+	let contextMenu = $state<{ x: number; y: number; mediaIds: number[] } | null>(null);
 	let uploadingImage = $state(false);
 	let imageUploadError = $state<string | null>(null);
 	let fileInputRef = $state<HTMLInputElement | null>(null);
@@ -360,9 +362,39 @@
 
 	const handleBulkEditClose = () => {
 		showBulkEditPanel = false;
-		bulkSelectMode = false;
-		resetSelectionState();
+		if (bulkSelectMode) {
+			bulkSelectMode = false;
+			resetSelectionState();
+		}
 	};
+
+	const handleItemContextMenu = (media: Media, e: MouseEvent) => {
+		if (bulkSelectMode && selectedMediaIds.size > 0 && selectedMediaIds.has(media.id)) {
+			contextMenu = { x: e.clientX, y: e.clientY, mediaIds: Array.from(selectedMediaIds) };
+		} else {
+			contextMenu = { x: e.clientX, y: e.clientY, mediaIds: [media.id] };
+		}
+	};
+
+	const handleContextMenuEdit = () => {
+		if (contextMenu) {
+			editingMediaIds = contextMenu.mediaIds;
+			showBulkEditPanel = true;
+			contextMenu = null;
+		}
+	};
+
+	const handleContextMenuClose = () => {
+		contextMenu = null;
+	};
+
+	let editingMediaIds = $state<number[]>([]);
+
+	const editingIds = $derived(
+		bulkSelectMode && selectedMediaIds.size > 0
+			? Array.from(selectedMediaIds)
+			: editingMediaIds
+	);
 
 	const formatStyleLabel = (style: string | null): string => {
 		if (!style) return 'Not specified';
@@ -749,6 +781,7 @@
 									<button
 										type="button"
 										onclick={(e) => toggleMediaSelection(media.id, e.shiftKey)}
+										oncontextmenu={(e) => { e.preventDefault(); handleItemContextMenu(media, e); }}
 										class="w-full aspect-square rounded-lg overflow-hidden border-2 transition-all {selectedMediaIds.has(media.id) ? 'border-blue-600 ring-2 ring-blue-600' : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'}"
 									>
 										{#if failedThumbnails.has(media.id)}
@@ -779,9 +812,9 @@
 							{/each}
 						</div>
 					{:else if viewMode === 'grid'}
-						<MediaGrid items={mediaItems} onItemClick={handleMediaClick} />
+						<MediaGrid items={mediaItems} onItemClick={handleMediaClick} onItemContextMenu={handleItemContextMenu} />
 					{:else}
-						<MediaList items={mediaItems} onItemClick={handleMediaClick} />
+						<MediaList items={mediaItems} onItemClick={handleMediaClick} onItemContextMenu={handleItemContextMenu} />
 					{/if}
 
 					{#if totalPages > 1}
@@ -811,10 +844,19 @@
 	/>
 {/if}
 
+{#if contextMenu}
+	<MediaContextMenu
+		x={contextMenu.x}
+		y={contextMenu.y}
+		onEdit={handleContextMenuEdit}
+		onClose={handleContextMenuClose}
+	/>
+{/if}
+
 {#if showBulkEditPanel}
 	<BulkEditingPanel
-		selectedCount={selectedMediaIds.size}
-		selectedMediaIds={Array.from(selectedMediaIds)}
+		selectedCount={editingIds.length}
+		selectedMediaIds={editingIds}
 		onComplete={handleBulkEditComplete}
 		onClose={handleBulkEditClose}
 	/>

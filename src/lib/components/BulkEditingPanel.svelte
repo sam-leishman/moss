@@ -190,6 +190,9 @@
 		if (loadingDelayTimeout) {
 			clearTimeout(loadingDelayTimeout);
 		}
+		if (abortController) {
+			abortController.abort();
+		}
 	});
 
 	const tabs: Array<{ id: TabType; label: string }> = [
@@ -207,7 +210,7 @@
 	>
 		<div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
 			<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-				Bulk Edit {selectedCount} Item{selectedCount !== 1 ? 's' : ''}
+				{selectedCount === 1 ? 'Edit 1 Item' : `Bulk Edit ${selectedCount} Items`}
 			</h3>
 			<button
 				type="button"

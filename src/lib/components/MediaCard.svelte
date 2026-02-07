@@ -7,9 +7,10 @@
 	interface Props {
 		media: Media;
 		onClick?: (media: Media) => void;
+		onContextMenu?: (media: Media, e: MouseEvent) => void;
 	}
 
-	let { media, onClick }: Props = $props();
+	let { media, onClick, onContextMenu }: Props = $props();
 
 	let isLiking = $state(false);
 
@@ -54,6 +55,7 @@
 <div
 	class="group relative aspect-square overflow-hidden rounded-lg bg-gray-100 hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer"
 	onclick={handleClick}
+	oncontextmenu={(e) => { if (onContextMenu) { e.preventDefault(); onContextMenu(media, e); } }}
 	role="button"
 	tabindex="0"
 	onkeydown={(e) => e.key === 'Enter' && handleClick()}
