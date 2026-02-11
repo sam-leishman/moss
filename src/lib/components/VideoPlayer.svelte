@@ -10,6 +10,7 @@
 		selectedQuality?: string;
 		onQualityChange?: (quality: string) => void;
 		useHlsPlayback?: boolean;
+		isBuffering?: boolean;
 	}
 
 	let {
@@ -19,7 +20,8 @@
 		availableQualities = [],
 		selectedQuality = 'original',
 		onQualityChange,
-		useHlsPlayback = false
+		useHlsPlayback = false,
+		isBuffering = false
 	}: Props = $props();
 
 	let containerEl = $state<HTMLDivElement | null>(null);
@@ -263,8 +265,17 @@
 		<track kind="captions" />
 	</video>
 
-	<!-- Big play button overlay (when paused) -->
-	{#if !isPlaying}
+	<!-- Loading spinner overlay (when buffering) -->
+	{#if isBuffering}
+		<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+			<div class="w-16 h-16 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+				<div class="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Big play button overlay (when paused and not buffering) -->
+	{#if !isPlaying && !isBuffering}
 		<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
 			<div class="w-16 h-16 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
 				<Play class="w-8 h-8 text-white ml-1" />

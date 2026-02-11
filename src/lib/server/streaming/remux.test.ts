@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getStreamDecision, createRemuxStream } from './remux';
+import {
+	getStreamDecision,
+	createRemuxStream,
+	hasRemuxCache,
+	isRemuxing,
+	startRemuxToCache,
+	getRemuxCachePath,
+	invalidateRemuxCache,
+	resetRemuxJobs
+} from './remux';
 import type { StreamDecision } from './remux';
 import { EventEmitter } from 'events';
 import { Readable } from 'stream';
@@ -19,12 +28,34 @@ vi.mock('$lib/server/logging', () => ({
 	})
 }));
 
+vi.mock('$lib/server/config', () => ({
+	getMetadataDir: () => '/tmp/test-metadata'
+}));
+
+vi.mock('fs', async () => {
+	const actual = await vi.importActual<typeof import('fs')>('fs');
+	return {
+		...actual,
+		existsSync: vi.fn().mockReturnValue(false),
+		mkdirSync: vi.fn(),
+		statSync: vi.fn().mockReturnValue({ size: 1024 }),
+		unlinkSync: vi.fn()
+	};
+});
+
 import { spawn } from 'child_process';
+import { existsSync, statSync, unlinkSync } from 'fs';
 
 const mockSpawn = spawn as unknown as ReturnType<typeof vi.fn>;
+const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>;
+const mockStatSync = statSync as unknown as ReturnType<typeof vi.fn>;
+const mockUnlinkSync = unlinkSync as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	resetRemuxJobs();
+	mockExistsSync.mockReturnValue(false);
+	mockStatSync.mockReturnValue({ size: 1024 });
 });
 
 describe('getStreamDecision', () => {
@@ -171,5 +202,108 @@ describe('createRemuxStream', () => {
 
 		expect(result.stream).toBe(mockStdout);
 		expect(result.process).toBe(proc);
+	});
+});
+
+describe('remux cache', () => {
+	function createMockProcess(): ChildProcess {
+		const proc = new EventEmitter() as ChildProcess;
+		(proc as any).stderr = new EventEmitter();
+		(proc as any).killed = false;
+		return proc;
+	}
+
+	describe('getRemuxCachePath', () => {
+		it('returns path based on media ID', () => {
+			const path = getRemuxCachePath(42);
+			expect(path).toContain('remux-cache');
+			expect(path).toContain('42.mp4');
+		});
+	});
+
+	describe('hasRemuxCache', () => {
+		it('returns false when cache file does not exist', () => {
+			mockExistsSync.mockReturnValue(false);
+			expect(hasRemuxCache(1)).toBe(false);
+		});
+
+		it('returns true when cache file exists with non-zero size and no active job', () => {
+			mockExistsSync.mockReturnValue(true);
+			mockStatSync.mockReturnValue({ size: 1024 });
+			expect(hasRemuxCache(1)).toBe(true);
+		});
+
+		it('returns false when remux is in progress', () => {
+			// Start remux first (existsSync returns false so it spawns)
+			mockSpawn.mockReturnValue(createMockProcess());
+			startRemuxToCache('/test/video.mkv', 1);
+			// Now mock the file as existing — but job is still active
+			mockExistsSync.mockReturnValue(true);
+			mockStatSync.mockReturnValue({ size: 1024 });
+			expect(hasRemuxCache(1)).toBe(false);
+		});
+	});
+
+	describe('isRemuxing', () => {
+		it('returns false when no remux is active', () => {
+			expect(isRemuxing(1)).toBe(false);
+		});
+
+		it('returns true when remux is in progress', () => {
+			mockSpawn.mockReturnValue(createMockProcess());
+			startRemuxToCache('/test/video.mkv', 1);
+			expect(isRemuxing(1)).toBe(true);
+		});
+	});
+
+	describe('startRemuxToCache', () => {
+		it('spawns ffmpeg with -c copy and +faststart', () => {
+			mockSpawn.mockReturnValue(createMockProcess());
+			startRemuxToCache('/test/video.mkv', 42);
+
+			expect(mockSpawn).toHaveBeenCalledWith(
+				'ffmpeg',
+				expect.arrayContaining([
+					'-i', '/test/video.mkv',
+					'-c', 'copy',
+					'-movflags', '+faststart',
+					'-f', 'mp4'
+				]),
+				expect.any(Object)
+			);
+		});
+
+		it('returns true if already cached', () => {
+			mockExistsSync.mockReturnValue(true);
+			mockStatSync.mockReturnValue({ size: 1024 });
+			expect(startRemuxToCache('/test/video.mkv', 1)).toBe(true);
+			expect(mockSpawn).not.toHaveBeenCalled();
+		});
+
+		it('returns true if already in progress', () => {
+			mockSpawn.mockReturnValue(createMockProcess());
+			startRemuxToCache('/test/video.mkv', 1);
+			mockSpawn.mockClear();
+			expect(startRemuxToCache('/test/video.mkv', 1)).toBe(true);
+			expect(mockSpawn).not.toHaveBeenCalled();
+		});
+
+		it('clears active job on completion', () => {
+			const proc = createMockProcess();
+			mockSpawn.mockReturnValue(proc);
+			startRemuxToCache('/test/video.mkv', 1);
+			expect(isRemuxing(1)).toBe(true);
+
+			proc.emit('close', 0);
+			expect(isRemuxing(1)).toBe(false);
+		});
+	});
+
+	describe('invalidateRemuxCache', () => {
+		it('deletes cache file if it exists', () => {
+			mockExistsSync.mockReturnValue(true);
+			invalidateRemuxCache(1);
+			expect(mockUnlinkSync).toHaveBeenCalled();
+		});
 	});
 });

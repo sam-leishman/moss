@@ -1,4 +1,12 @@
-export { getStreamDecision, createRemuxStream } from './remux';
+export {
+	getStreamDecision,
+	createRemuxStream,
+	hasRemuxCache,
+	isRemuxing,
+	startRemuxToCache,
+	getRemuxCachePath,
+	invalidateRemuxCache
+} from './remux';
 
 export type { StreamDecision } from './remux';
 
@@ -17,11 +25,13 @@ export {
 export type { QualityPreset, TranscodeProfile } from './transcode';
 
 export {
+	HLS_SEGMENT_DURATION,
 	generateMasterPlaylist,
-	startHlsGeneration,
-	hasHlsCache,
+	generateVodPlaylist,
+	requestHlsSegment,
+	pregenerateInitialSegments,
+	hasSegment,
 	isHlsGenerating,
-	getHlsPlaylist,
 	getHlsSegment,
 	getHlsSegmentDir,
 	invalidateHlsCache

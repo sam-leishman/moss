@@ -23,13 +23,19 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	}
 
 	const decision = getStreamDecision(media.video_codec, media.audio_codec, media.container_format);
-	const needsTranscode = decision.action === 'transcode' || decision.action === 'remux';
+	const needsTranscode = decision.action === 'transcode';
 
 	// Get available quality presets based on source resolution
-	const qualities = getAvailableQualities(media.width, media.height);
+	const allQualities = getAvailableQualities(media.width, media.height);
 
-	// HLS is available when there are transcode-able qualities (not just 'original')
-	const hasHls = qualities.length > 1;
+	// When transcoding is required (incompatible codec), exclude 'original' since
+	// the browser can't play the source codec natively (e.g. HEVC).
+	const qualities = needsTranscode
+		? allQualities.filter((q) => q !== 'original')
+		: allQualities;
+
+	// HLS is available when there are transcode-able qualities
+	const hasHls = qualities.some((q) => q !== 'original');
 
 	return json({
 		qualities,

@@ -3,12 +3,7 @@ import { getDatabase } from '$lib/server/db';
 import type { Media } from '$lib/server/db';
 import { sanitizeInteger } from '$lib/server/security';
 import { requireLibraryAccess } from '$lib/server/auth';
-import {
-	getHlsPlaylist,
-	hasHlsCache,
-	isHlsGenerating,
-	startHlsGeneration
-} from '$lib/server/streaming';
+import { generateVodPlaylist, pregenerateInitialSegments } from '$lib/server/streaming';
 import type { QualityPreset } from '$lib/server/streaming';
 import { existsSync } from 'fs';
 import type { RequestHandler } from './$types';
@@ -36,38 +31,31 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		error(400, 'HLS streaming is only available for video files');
 	}
 
+	if (!media.duration) {
+		error(400, 'Video duration is unknown — cannot generate HLS playlist');
+	}
+
 	if (!existsSync(media.path)) {
 		error(404, 'Media file not found on disk');
 	}
 
-	// If not cached and not generating, start generation
-	if (!hasHlsCache(mediaId, quality) && !isHlsGenerating(mediaId, quality)) {
-		const started = startHlsGeneration(media.path, mediaId, quality);
-		if (!started) {
-			error(503, 'Transcoding queue is full. Please try again shortly.');
-		}
+	// Pre-generate the first 3 segments to ensure smooth playback start
+	// This also starts background encoding for the rest of the video
+	const ready = await pregenerateInitialSegments(media.path, mediaId, quality, 3);
+	
+	if (!ready) {
+		error(503, 'Failed to generate initial segments. Please try again.');
 	}
 
-	// Try to return the playlist (may be partial if still generating)
-	const playlist = getHlsPlaylist(mediaId, quality);
-
-	if (!playlist) {
-		// Playlist not yet written — generation just started, tell client to retry
-		return new Response('#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:6\n', {
-			headers: {
-				'Content-Type': 'application/vnd.apple.mpegurl',
-				'Cache-Control': 'no-cache',
-				'Retry-After': '2'
-			}
-		});
-	}
-
-	const isComplete = playlist.includes('#EXT-X-ENDLIST');
+	// Generate a complete VOD playlist using the known duration.
+	// Now that initial segments exist, hls.js can start playback immediately
+	// and seeking will work properly as segments are generated on-demand.
+	const playlist = generateVodPlaylist(mediaId, quality, media.duration);
 
 	return new Response(playlist, {
 		headers: {
 			'Content-Type': 'application/vnd.apple.mpegurl',
-			'Cache-Control': isComplete ? 'public, max-age=31536000, immutable' : 'no-cache'
+			'Cache-Control': 'public, max-age=31536000, immutable'
 		}
 	});
 };

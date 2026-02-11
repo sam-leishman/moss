@@ -5,6 +5,12 @@ import { sanitizeInteger } from '$lib/server/security';
 import { requireLibraryAccess } from '$lib/server/auth';
 import {
 	getStreamDecision,
+	getAvailableQualities,
+	createRemuxStream,
+	hasRemuxCache,
+	isRemuxing,
+	startRemuxToCache,
+	getRemuxCachePath,
 	createTranscodeStream,
 	createCachedTranscodeStream,
 	hasTranscodeCache,
@@ -123,11 +129,32 @@ export const GET: RequestHandler = async ({ params, request, locals, url }) => {
 			return await serveTranscoded(media, quality);
 		}
 
-		if (decision.action === 'remux' || decision.action === 'transcode') {
-			// Non-MP4 container or incompatible codec — transcode to H.264/AAC.
-			// The old remux pipe (ffmpeg -c copy, chunked) was non-seekable in
-			// browsers. Transcoding via HLS provides seekable playback.
-			return await serveTranscoded(media, 'high');
+		if (decision.action === 'remux') {
+			// Compatible codecs but wrong container (e.g. MKV, AVI).
+			// Serve cached remux MP4 with Range support for full seeking.
+			if (hasRemuxCache(media.id)) {
+				return serveRawFile(getRemuxCachePath(media.id), 'video', request);
+			}
+
+			// Start background remux to cache for next time
+			startRemuxToCache(media.path, media.id);
+
+			// Stream via ffmpeg pipe while cache is being built
+			const { stream, process: ffmpeg } = createRemuxStream(media.path);
+			return new Response(nodeStreamToWeb(stream, ffmpeg), {
+				headers: {
+					'Content-Type': 'video/mp4',
+					'Cache-Control': 'no-cache'
+				}
+			});
+		}
+
+		if (decision.action === 'transcode') {
+			// Incompatible codec — transcode to H.264/AAC.
+			// Pick the highest available transcode quality for the source resolution.
+			const qualities = getAvailableQualities(media.width, media.height);
+			const bestQuality = qualities.find((q) => q !== 'original') || 'low';
+			return await serveTranscoded(media, bestQuality);
 		}
 	}
 

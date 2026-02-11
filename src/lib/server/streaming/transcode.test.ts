@@ -81,25 +81,28 @@ describe('getAvailableQualities', () => {
 		expect(qualities).toContain('low');
 	});
 
-	it('returns medium and low for exact 1080p source', () => {
+	it('returns high, medium, and low for exact 1080p source', () => {
 		const qualities = getAvailableQualities(1920, 1080);
+		expect(qualities).toContain('original');
+		expect(qualities).toContain('high');
+		expect(qualities).toContain('medium');
+		expect(qualities).toContain('low');
+	});
+
+	it('returns medium and low for exact 720p source', () => {
+		const qualities = getAvailableQualities(1280, 720);
 		expect(qualities).toContain('original');
 		expect(qualities).not.toContain('high');
 		expect(qualities).toContain('medium');
 		expect(qualities).toContain('low');
 	});
 
-	it('returns only low for exact 720p source', () => {
-		const qualities = getAvailableQualities(1280, 720);
-		expect(qualities).toContain('original');
-		expect(qualities).not.toContain('high');
-		expect(qualities).not.toContain('medium');
-		expect(qualities).toContain('low');
-	});
-
-	it('returns only original for exact 480p source', () => {
+	it('returns low for exact 480p source', () => {
 		const qualities = getAvailableQualities(854, 480);
-		expect(qualities).toEqual(['original']);
+		expect(qualities).toContain('original');
+		expect(qualities).toContain('low');
+		expect(qualities).not.toContain('medium');
+		expect(qualities).not.toContain('high');
 	});
 
 	it('returns only original for very small source', () => {
@@ -108,9 +111,12 @@ describe('getAvailableQualities', () => {
 	});
 
 	it('uses shorter dimension for portrait videos', () => {
-		// 480x854 portrait video — short side is 480, same as 480p preset, no downscale available
+		// 480x854 portrait video — short side is 480, matches 480p preset
 		const qualities = getAvailableQualities(480, 854);
-		expect(qualities).toEqual(['original']);
+		expect(qualities).toContain('original');
+		expect(qualities).toContain('low');
+		expect(qualities).not.toContain('medium');
+		expect(qualities).not.toContain('high');
 	});
 });
 

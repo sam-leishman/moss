@@ -39,10 +39,10 @@ const TRANSCODE_PROFILES: Record<Exclude<QualityPreset, 'original'>, TranscodePr
 
 /**
  * Returns the available quality presets for a given video based on its resolution.
- * Only includes presets that are strictly lower than the source resolution.
- * Uses the shorter dimension (min of width/height) so portrait videos don't
- * offer upscale presets. Presets matching the source resolution are excluded
- * since re-encoding at the same resolution only loses quality.
+ * Includes presets at or below the source resolution. Uses the shorter dimension
+ * (min of width/height) so portrait videos don't offer upscale presets.
+ * This ensures non-MP4 containers (e.g. MKV) always have at least one transcode
+ * quality for HLS playback, since browsers can't play MKV natively.
  */
 export function getAvailableQualities(sourceWidth: number | null, sourceHeight: number | null): QualityPreset[] {
 	const qualities: QualityPreset[] = ['original'];
@@ -52,7 +52,7 @@ export function getAvailableQualities(sourceWidth: number | null, sourceHeight: 
 	const shortSide = Math.min(sourceWidth, sourceHeight);
 
 	for (const [key, profile] of Object.entries(TRANSCODE_PROFILES)) {
-		if (shortSide > profile.maxHeight) {
+		if (shortSide >= profile.maxHeight) {
 			qualities.push(key as QualityPreset);
 		}
 	}
