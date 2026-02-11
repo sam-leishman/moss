@@ -3,7 +3,8 @@ import { getDatabase } from '$lib/server/db';
 import type { Media } from '$lib/server/db';
 import { sanitizeInteger } from '$lib/server/security';
 import { requireLibraryAccess } from '$lib/server/auth';
-import { getStreamDecision, getAvailableQualities } from '$lib/server/streaming';
+import { getStreamDecision, getAvailableQualities, hasTranscodeCache, hasRemuxCache } from '$lib/server/streaming';
+import type { QualityPreset } from '$lib/server/streaming';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -34,13 +35,22 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		? allQualities.filter((q) => q !== 'original')
 		: allQualities;
 
-	// HLS is available when there are transcode-able qualities
-	const hasHls = qualities.some((q) => q !== 'original');
+	// Determine if seeking is available for each quality.
+	// Seeking requires a completed file on disk (direct serve, cached remux, or cached transcode).
+	const cached: Record<string, boolean> = {};
+	for (const q of qualities) {
+		if (q === 'original') {
+			// Original is seekable if direct-serve or remux cache is ready
+			cached[q] = decision.action === 'direct' || hasRemuxCache(mediaId);
+		} else {
+			cached[q] = hasTranscodeCache(mediaId, q as QualityPreset);
+		}
+	}
 
 	return json({
 		qualities,
 		needsTranscode,
-		hlsUrl: hasHls ? `/api/media/${mediaId}/stream/master.m3u8` : null,
+		cached,
 		sourceCodec: media.video_codec,
 		sourceResolution: media.width && media.height ? `${media.width}x${media.height}` : null
 	});

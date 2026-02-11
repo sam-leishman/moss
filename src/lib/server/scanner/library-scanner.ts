@@ -3,7 +3,16 @@ import { FileScanner } from './file-scanner';
 import { getLogger } from '$lib/server/logging';
 import { getThumbnailGenerator } from '$lib/server/thumbnails';
 import { probeMediaFile } from './probe';
-import { invalidateTranscodeCache, invalidateHlsCache } from '$lib/server/streaming';
+import {
+	invalidateTranscodeCache,
+	invalidateRemuxCache,
+	getStreamDecision,
+	hasRemuxCache,
+	startRemuxToCache,
+	hasTranscodeCache,
+	startTranscodeToCache,
+	getAvailableQualities
+} from '$lib/server/streaming';
 import type { Library, Media } from '$lib/server/db';
 import type { ScannedFile } from './file-scanner';
 import { existsSync } from 'fs';
@@ -185,6 +194,9 @@ export class LibraryScanner {
 			// Probe video files missing metadata
 			await this.probeUnprobedMedia(stats, onProgress, scanResult.totalFiles);
 
+			// Prepare video caches (remux/transcode) in the background
+			this.prepareVideoCache();
+
 			// Ensure all media has valid (non-placeholder) thumbnails
 			await this.ensureThumbnails(stats, onProgress, scanResult.totalFiles);
 
@@ -260,7 +272,7 @@ export class LibraryScanner {
 						existing.id
 					);
 					invalidateTranscodeCache(existing.id);
-					invalidateHlsCache(existing.id);
+					invalidateRemuxCache(existing.id);
 					stats.filesProbed++;
 				} else {
 					db.prepare(`
@@ -413,6 +425,52 @@ export class LibraryScanner {
 		}
 	}
 
+	/**
+	 * Kicks off background remux/transcode jobs for videos that need them.
+	 * Runs after probing so all videos have codec metadata.
+	 * Fire-and-forget — does not block the scan.
+	 */
+	private prepareVideoCache(): void {
+		const db = getDatabase();
+
+		const videos = db.prepare(
+			'SELECT id, path, video_codec, audio_codec, container_format, width, height FROM media WHERE library_id = ? AND media_type = ? AND video_codec IS NOT NULL'
+		).all(this.libraryId, 'video') as Array<{
+			id: number; path: string;
+			video_codec: string | null; audio_codec: string | null; container_format: string | null;
+			width: number | null; height: number | null;
+		}>;
+
+		let remuxCount = 0;
+		let transcodeCount = 0;
+
+		for (const video of videos) {
+			if (!existsSync(video.path)) continue;
+
+			const decision = getStreamDecision(video.video_codec, video.audio_codec, video.container_format);
+
+			if (decision.action === 'remux' && !hasRemuxCache(video.id)) {
+				if (startRemuxToCache(video.path, video.id)) {
+					remuxCount++;
+				}
+			}
+
+			if (decision.action === 'transcode') {
+				const qualities = getAvailableQualities(video.width, video.height);
+				const bestQuality = qualities.find((q) => q !== 'original');
+				if (bestQuality && !hasTranscodeCache(video.id, bestQuality)) {
+					if (startTranscodeToCache(video.path, video.id, bestQuality)) {
+						transcodeCount++;
+					}
+				}
+			}
+		}
+
+		if (remuxCount > 0 || transcodeCount > 0) {
+			logger.info(`Started background video cache: ${remuxCount} remux, ${transcodeCount} transcode jobs for library ${this.libraryId}`);
+		}
+	}
+
 	private async cleanupOrphanedMedia(): Promise<number> {
 		const db = getDatabase();
 		const thumbnailGen = getThumbnailGenerator();
@@ -432,6 +490,10 @@ export class LibraryScanner {
 				} catch (error) {
 					logger.warn(`Failed to delete thumbnail for ${media.path}: ${error instanceof Error ? error.message : String(error)}`);
 				}
+
+				// Clean up cached remux/transcode files
+				invalidateRemuxCache(media.id);
+				invalidateTranscodeCache(media.id);
 
 				// Delete from database
 				db.prepare('DELETE FROM media WHERE id = ?').run(media.id);

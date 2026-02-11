@@ -8,13 +8,13 @@ import {
 	getAvailableQualities,
 	createRemuxStream,
 	hasRemuxCache,
-	isRemuxing,
 	startRemuxToCache,
 	getRemuxCachePath,
 	createTranscodeStream,
-	createCachedTranscodeStream,
 	hasTranscodeCache,
-	canStartTranscode
+	canStartTranscode,
+	getTranscodeCachePath,
+	startTranscodeToCache
 } from '$lib/server/streaming';
 import type { QualityPreset } from '$lib/server/streaming';
 import { existsSync, createReadStream, statSync } from 'fs';
@@ -126,7 +126,7 @@ export const GET: RequestHandler = async ({ params, request, locals, url }) => {
 
 		// Explicit quality downgrade requested — transcode regardless of codec compatibility
 		if (quality !== 'original') {
-			return await serveTranscoded(media, quality);
+			return await serveTranscoded(media, quality, request);
 		}
 
 		if (decision.action === 'remux') {
@@ -154,7 +154,7 @@ export const GET: RequestHandler = async ({ params, request, locals, url }) => {
 			// Pick the highest available transcode quality for the source resolution.
 			const qualities = getAvailableQualities(media.width, media.height);
 			const bestQuality = qualities.find((q) => q !== 'original') || 'low';
-			return await serveTranscoded(media, bestQuality);
+			return await serveTranscoded(media, bestQuality, request);
 		}
 	}
 
@@ -162,18 +162,16 @@ export const GET: RequestHandler = async ({ params, request, locals, url }) => {
 	return serveRawFile(media.path, media.media_type, request);
 };
 
-async function serveTranscoded(media: Media, quality: QualityPreset): Promise<Response> {
-	// Check cache first
+async function serveTranscoded(media: Media, quality: QualityPreset, request: Request): Promise<Response> {
+	// Serve from cache with full Range support for seeking
 	if (hasTranscodeCache(media.id, quality)) {
-		const stream = createCachedTranscodeStream(media.id, quality);
-		return new Response(nodeStreamToWeb(stream), {
-			headers: {
-				'Content-Type': 'video/mp4',
-				'Cache-Control': 'public, max-age=31536000, immutable'
-			}
-		});
+		return serveRawFile(getTranscodeCachePath(media.id, quality), 'video', request);
 	}
 
+	// Start background transcode if not already running
+	startTranscodeToCache(media.path, media.id, quality);
+
+	// Stream via ffmpeg pipe for immediate playback (no seeking).
 	// Wait briefly for a transcode slot to free up (handles race with abort cleanup)
 	const maxRetries = 10;
 	for (let i = 0; i < maxRetries && !canStartTranscode(); i++) {
@@ -193,8 +191,7 @@ async function serveTranscoded(media: Media, quality: QualityPreset): Promise<Re
 	return new Response(nodeStreamToWeb(result.stream, result.process), {
 		headers: {
 			'Content-Type': 'video/mp4',
-			'Cache-Control': 'no-cache',
-			'Transfer-Encoding': 'chunked'
+			'Cache-Control': 'no-cache'
 		}
 	});
 }

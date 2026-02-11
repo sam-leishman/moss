@@ -162,11 +162,13 @@ export function invalidateRemuxCache(mediaId: number): void {
 }
 
 const activeRemuxJobs = new Map<number, ChildProcess>();
+const MAX_CONCURRENT_REMUX_JOBS = 3;
 
 /**
  * Starts a background remux of the source file to a cached MP4.
  * Uses ffmpeg -c copy (no re-encoding) — near-zero CPU cost.
  * Returns true if remux was started or is already running/cached.
+ * Returns false if the concurrency limit has been reached.
  */
 export function startRemuxToCache(filePath: string, mediaId: number): boolean {
 	// Already cached
@@ -174,6 +176,9 @@ export function startRemuxToCache(filePath: string, mediaId: number): boolean {
 
 	// Already in progress
 	if (activeRemuxJobs.has(mediaId)) return true;
+
+	// Concurrency limit reached
+	if (activeRemuxJobs.size >= MAX_CONCURRENT_REMUX_JOBS) return false;
 
 	const outputPath = getRemuxCachePath(mediaId);
 

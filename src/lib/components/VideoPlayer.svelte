@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatDuration } from '$lib/utils/format';
-	import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings } from 'lucide-svelte';
+	import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Loader } from 'lucide-svelte';
 
 	interface Props {
 		src: string;
@@ -9,8 +9,7 @@
 		availableQualities?: string[];
 		selectedQuality?: string;
 		onQualityChange?: (quality: string) => void;
-		useHlsPlayback?: boolean;
-		isBuffering?: boolean;
+		isSeekable?: boolean;
 	}
 
 	let {
@@ -20,9 +19,10 @@
 		availableQualities = [],
 		selectedQuality = 'original',
 		onQualityChange,
-		useHlsPlayback = false,
-		isBuffering = false
+		isSeekable = true
 	}: Props = $props();
+
+	let isBuffering = $state(false);
 
 	let containerEl = $state<HTMLDivElement | null>(null);
 	let seekBarEl = $state<HTMLDivElement | null>(null);
@@ -87,7 +87,7 @@
 	}
 
 	function seekToFraction(clientX: number) {
-		if (!videoElement || !seekBarEl) return;
+		if (!videoElement || !seekBarEl || !isSeekable) return;
 		const rect = seekBarEl.getBoundingClientRect();
 		const fraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
 		const newTime = fraction * displayDuration;
@@ -96,6 +96,7 @@
 	}
 
 	function handleSeekStart(e: MouseEvent) {
+		if (!isSeekable) return;
 		isSeeking = true;
 		seekToFraction(e.clientX);
 
@@ -204,12 +205,12 @@
 			case 'ArrowRight':
 				e.preventDefault();
 				e.stopPropagation();
-				videoElement.currentTime = Math.min(videoElement.currentTime + 10, displayDuration);
+				if (isSeekable) videoElement.currentTime = Math.min(videoElement.currentTime + 10, displayDuration);
 				break;
 			case 'ArrowLeft':
 				e.preventDefault();
 				e.stopPropagation();
-				videoElement.currentTime = Math.max(videoElement.currentTime - 10, 0);
+				if (isSeekable) videoElement.currentTime = Math.max(videoElement.currentTime - 10, 0);
 				break;
 			case 'ArrowUp':
 				e.preventDefault();
@@ -254,16 +255,26 @@
 	<!-- Video Element -->
 	<video
 		bind:this={videoElement}
-		src={useHlsPlayback ? undefined : src}
+		{src}
 		class="max-w-full max-h-full"
 		ontimeupdate={handleTimeUpdate}
 		onplay={handlePlay}
 		onpause={handlePause}
 		onprogress={updateBuffered}
+		onwaiting={() => isBuffering = true}
+		onplaying={() => isBuffering = false}
 		preload="metadata"
 	>
 		<track kind="captions" />
 	</video>
+
+	<!-- Transcode caching indicator (seeking unavailable) -->
+	{#if !isSeekable}
+		<div class="absolute top-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1.5 pointer-events-none">
+			<Loader class="w-3.5 h-3.5 text-white/70 animate-spin" />
+			<span class="text-xs text-white/70">Preparing for seeking...</span>
+		</div>
+	{/if}
 
 	<!-- Loading spinner overlay (when buffering) -->
 	{#if isBuffering}
@@ -299,7 +310,7 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				bind:this={seekBarEl}
-				class="group/seek w-full h-5 flex items-center cursor-pointer mb-2"
+				class="group/seek w-full h-5 flex items-center mb-2 {isSeekable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}"
 				onmousedown={handleSeekStart}
 			>
 				<div class="relative w-full h-1 group-hover/seek:h-1.5 bg-white/20 rounded-full transition-all">

@@ -1,6 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EventEmitter } from 'events';
-import { Readable } from 'stream';
 import type { ChildProcess } from 'child_process';
 
 // Mock modules
@@ -27,17 +26,13 @@ vi.mock('fs', async () => {
 		...actual,
 		existsSync: vi.fn(() => false),
 		mkdirSync: vi.fn(),
-		createReadStream: vi.fn(() => new Readable({ read() {} })),
-		createWriteStream: vi.fn(() => ({
-			write: vi.fn(),
-			end: vi.fn()
-		})),
+		statSync: vi.fn(() => ({ size: 1024 })),
 		unlinkSync: vi.fn()
 	};
 });
 
 import { spawn } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, statSync, unlinkSync } from 'fs';
 import {
 	getAvailableQualities,
 	getTranscodeProfile,
@@ -45,25 +40,36 @@ import {
 	hasTranscodeCache,
 	createTranscodeStream,
 	canStartTranscode,
-	getActiveTranscodeCount,
-	resetTranscodeQueue
+	resetTranscodeQueue,
+	startTranscodeToCache,
+	isTranscoding,
+	invalidateTranscodeCache,
+	resetTranscodeJobs
 } from './transcode';
 
 const mockSpawn = spawn as unknown as ReturnType<typeof vi.fn>;
-const mockExistsSync = existsSync as ReturnType<typeof vi.fn>;
+const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>;
+const mockStatSync = statSync as unknown as ReturnType<typeof vi.fn>;
+const mockUnlinkSync = unlinkSync as unknown as ReturnType<typeof vi.fn>;
 
-function createMockProcess(): ChildProcess {
+function createMockProcess(opts?: { withStdout?: boolean }): ChildProcess {
 	const proc = new EventEmitter() as ChildProcess;
-	const stdout = new Readable({ read() {} });
-	(proc as any).stdout = stdout;
+	if (opts?.withStdout !== false) {
+		const { Readable } = require('stream');
+		(proc as any).stdout = new Readable({ read() {} });
+	}
 	(proc as any).stderr = new EventEmitter();
+	(proc as any).killed = false;
+	(proc as any).kill = vi.fn(() => { (proc as any).killed = true; });
 	return proc;
 }
 
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockExistsSync.mockReturnValue(false);
+	mockStatSync.mockReturnValue({ size: 1024 });
 	resetTranscodeQueue();
+	resetTranscodeJobs();
 });
 
 describe('getAvailableQualities', () => {
@@ -166,9 +172,18 @@ describe('hasTranscodeCache', () => {
 		expect(hasTranscodeCache(1, 'high')).toBe(false);
 	});
 
-	it('returns true when cache file exists', () => {
+	it('returns true when cache file exists with non-zero size and no active job', () => {
 		mockExistsSync.mockReturnValue(true);
+		mockStatSync.mockReturnValue({ size: 1024 });
 		expect(hasTranscodeCache(1, 'high')).toBe(true);
+	});
+
+	it('returns false when transcode is in progress', () => {
+		mockSpawn.mockReturnValue(createMockProcess());
+		startTranscodeToCache('/test/video.mkv', 1, 'high');
+		mockExistsSync.mockReturnValue(true);
+		mockStatSync.mockReturnValue({ size: 1024 });
+		expect(hasTranscodeCache(1, 'high')).toBe(false);
 	});
 });
 
@@ -222,6 +237,99 @@ describe('createTranscodeStream', () => {
 		const vfIndex = args.indexOf('-vf');
 		expect(vfIndex).toBeGreaterThan(-1);
 		expect(args[vfIndex + 1]).toContain('480');
+	});
+});
+
+describe('isTranscoding', () => {
+	it('returns false when no transcode is active', () => {
+		expect(isTranscoding(1, 'high')).toBe(false);
+	});
+
+	it('returns true when transcode is in progress', () => {
+		mockSpawn.mockReturnValue(createMockProcess());
+		startTranscodeToCache('/test/video.mkv', 1, 'high');
+		expect(isTranscoding(1, 'high')).toBe(true);
+	});
+
+	it('tracks different qualities independently', () => {
+		mockSpawn.mockReturnValue(createMockProcess());
+		startTranscodeToCache('/test/video.mkv', 1, 'high');
+		expect(isTranscoding(1, 'high')).toBe(true);
+		expect(isTranscoding(1, 'medium')).toBe(false);
+	});
+});
+
+describe('startTranscodeToCache', () => {
+	it('returns false for original quality', () => {
+		expect(startTranscodeToCache('/test/video.mkv', 1, 'original')).toBe(false);
+		expect(mockSpawn).not.toHaveBeenCalled();
+	});
+
+	it('spawns ffmpeg with correct arguments', () => {
+		mockSpawn.mockReturnValue(createMockProcess());
+		startTranscodeToCache('/test/video.mkv', 42, 'medium');
+
+		expect(mockSpawn).toHaveBeenCalledWith(
+			'ffmpeg',
+			expect.arrayContaining([
+				'-i', '/test/video.mkv',
+				'-c:v', 'libx264',
+				'-movflags', '+faststart',
+				'-f', 'mp4'
+			]),
+			expect.any(Object)
+		);
+	});
+
+	it('returns true if already cached', () => {
+		mockExistsSync.mockReturnValue(true);
+		mockStatSync.mockReturnValue({ size: 1024 });
+		expect(startTranscodeToCache('/test/video.mkv', 1, 'high')).toBe(true);
+		expect(mockSpawn).not.toHaveBeenCalled();
+	});
+
+	it('returns true if already in progress', () => {
+		mockSpawn.mockReturnValue(createMockProcess());
+		startTranscodeToCache('/test/video.mkv', 1, 'high');
+		mockSpawn.mockClear();
+		expect(startTranscodeToCache('/test/video.mkv', 1, 'high')).toBe(true);
+		expect(mockSpawn).not.toHaveBeenCalled();
+	});
+
+	it('clears active job on completion', () => {
+		const proc = createMockProcess();
+		mockSpawn.mockReturnValue(proc);
+		startTranscodeToCache('/test/video.mkv', 1, 'high');
+		expect(isTranscoding(1, 'high')).toBe(true);
+
+		proc.emit('close', 0);
+		expect(isTranscoding(1, 'high')).toBe(false);
+	});
+
+	it('cleans up partial file on failure', () => {
+		const proc = createMockProcess();
+		mockSpawn.mockReturnValue(proc);
+		startTranscodeToCache('/test/video.mkv', 1, 'high');
+
+		mockExistsSync.mockReturnValue(true);
+		proc.emit('close', 1);
+
+		expect(isTranscoding(1, 'high')).toBe(false);
+		expect(mockUnlinkSync).toHaveBeenCalled();
+	});
+});
+
+describe('invalidateTranscodeCache', () => {
+	it('deletes cache files if they exist', () => {
+		mockExistsSync.mockReturnValue(true);
+		invalidateTranscodeCache(1);
+		expect(mockUnlinkSync).toHaveBeenCalled();
+	});
+
+	it('does nothing if no cache files exist', () => {
+		mockExistsSync.mockReturnValue(false);
+		invalidateTranscodeCache(1);
+		expect(mockUnlinkSync).not.toHaveBeenCalled();
 	});
 });
 
