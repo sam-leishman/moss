@@ -144,6 +144,7 @@ export const GET: RequestHandler = async ({ params, request, locals, url }) => {
 			return new Response(nodeStreamToWeb(stream, ffmpeg), {
 				headers: {
 					'Content-Type': 'video/mp4',
+					'Accept-Ranges': 'none',
 					'Cache-Control': 'no-cache'
 				}
 			});
@@ -191,6 +192,7 @@ async function serveTranscoded(media: Media, quality: QualityPreset, request: Re
 	return new Response(nodeStreamToWeb(result.stream, result.process), {
 		headers: {
 			'Content-Type': 'video/mp4',
+			'Accept-Ranges': 'none',
 			'Cache-Control': 'no-cache'
 		}
 	});

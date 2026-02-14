@@ -257,6 +257,7 @@
 		bind:this={videoElement}
 		{src}
 		class="max-w-full max-h-full"
+		playsinline
 		ontimeupdate={handleTimeUpdate}
 		onplay={handlePlay}
 		onpause={handlePause}
