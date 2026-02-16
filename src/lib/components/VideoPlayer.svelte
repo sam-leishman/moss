@@ -228,6 +228,25 @@
 		resetControlsTimer();
 	}
 
+	// iOS WebKit won't load video if src is set while the element is detached
+	// from the DOM (inside a DocumentFragment). Svelte child components create
+	// their template in a fragment before insertion, so we use an action to set
+	// src imperatively after the element is connected.
+	function videoSrc(node: HTMLVideoElement, initialSrc: string) {
+		if (initialSrc) {
+			node.src = initialSrc;
+			node.load();
+		}
+		return {
+			update(newSrc: string) {
+				if (newSrc && node.getAttribute('src') !== newSrc) {
+					node.src = newSrc;
+					node.load();
+				}
+			}
+		};
+	}
+
 	// Close quality menu when clicking outside
 	function handleWindowClick(e: MouseEvent) {
 		const target = e.target as HTMLElement;
@@ -255,7 +274,7 @@
 	<!-- Video Element -->
 	<video
 		bind:this={videoElement}
-		{src}
+		use:videoSrc={src}
 		class="max-w-full max-h-full"
 		playsinline
 		ontimeupdate={handleTimeUpdate}
@@ -397,7 +416,7 @@
 
 						{#if showQualityMenu}
 							<div class="absolute bottom-full right-0 mb-2 bg-gray-900/95 backdrop-blur-sm rounded-lg border border-white/10 py-1 min-w-[120px] shadow-xl">
-								{#each availableQualities as q}
+								{#each availableQualities as q (q)}
 									<button
 										type="button"
 										onclick={() => handleQualitySelect(q)}
